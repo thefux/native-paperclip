@@ -54,10 +54,60 @@ Pure web preview without Tauri: `pnpm dev` and open <http://localhost:1420>.
 
 ## Build
 
+The single entrypoint is `scripts/build.sh`. It honours the `NODE_ENV=production`
+gotcha (see below), checks toolchain presence, and produces artifacts in
+predictable locations.
+
 ```bash
-pnpm tauri:build        # signed bundle in src-tauri/target/release/bundle/
-pnpm android:build      # APK / AAB in src-tauri/gen/android/...
+./scripts/build.sh             # web → desktop → android (skips ios off macOS)
+./scripts/build.sh web         # Next.js static export only → ./out
+./scripts/build.sh desktop     # web + Tauri desktop bundle
+./scripts/build.sh android     # web + Tauri Android APK/AAB
+./scripts/build.sh ios         # macOS host only
+./scripts/build.sh desktop --debug
 ```
+
+Direct shortcuts (also fine):
+
+```bash
+pnpm build                # web only
+pnpm tauri:build          # desktop bundle in src-tauri/target/release/bundle/
+pnpm android:build        # APK / AAB in src-tauri/gen/android/...
+```
+
+### System prerequisites
+
+The Rust shell links against platform GUI libraries. Install these once on the
+build host:
+
+- **Linux (Debian/Ubuntu)** — required for desktop builds:
+
+  ```bash
+  sudo apt install -y \
+    libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+    libayatana-appindicator3-dev libssl-dev libsoup-3.0-dev \
+    pkg-config build-essential
+  ```
+
+- **macOS** — `xcode-select --install`. Add Apple Developer signing certs
+  for distributable builds.
+
+- **Windows** — Microsoft C++ Build Tools and the Windows 10/11 SDK.
+
+- **Android** — install the Android SDK + NDK (NDK 26+), then export:
+
+  ```bash
+  export ANDROID_HOME=/path/to/android-sdk
+  export NDK_HOME="$ANDROID_HOME/ndk/<version>"
+  export JAVA_HOME=/path/to/jdk-17
+  ```
+
+  Run `pnpm tauri android init` once before the first Android build to
+  scaffold `src-tauri/gen/android/`.
+
+- **iOS** — macOS host only; run `pnpm tauri ios init` once. Signing is
+  parked until an Apple Developer account is provisioned (mirrors Bloom
+  in its current state).
 
 ## Configuration
 
@@ -74,11 +124,17 @@ to validate before saving.
 
 ```
 .
-├── src/                    Next.js App Router source
-│   ├── app/                pages, layout, globals.css
-│   ├── components/         UI, providers, views
-│   └── lib/                api/, store/, utils
+├── pages/                  Next.js Pages Router (output: 'export')
+│   ├── _app.tsx            providers (TanStack Query, Head)
+│   ├── _error.tsx          custom error page
+│   ├── 404.tsx             custom 404
+│   └── index.tsx           main entry, dynamic-imports HomeApp (ssr: false)
+├── src/
+│   ├── components/         views, providers, ui primitives
+│   ├── lib/                api/ (client, types, realtime), store/, utils
+│   └── styles/globals.css  Tailwind entry + tokens
 ├── src-tauri/              Rust shell (desktop + mobile entry)
+├── scripts/build.sh        single build entrypoint (web / desktop / android / ios / all)
 └── next.config.mjs         output: 'export', images.unoptimized: true
 ```
 
