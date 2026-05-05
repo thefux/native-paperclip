@@ -1,0 +1,36 @@
+# Node
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# Next.js
+.next/
+out/
+next-env.d.ts.bak
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Misc
+.DS_Store
+*.log
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Build artifacts
+dist/
+*.app
+*.dmg
+*.msi
+*.AppImage
+*.apk
+*.aab
+*.ipa
