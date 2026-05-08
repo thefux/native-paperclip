@@ -13,6 +13,9 @@ next-env.d.ts.bak
 src-tauri/target/
 src-tauri/gen/schemas/
 
+# TypeScript incremental build cache
+*.tsbuildinfo
+
 # Misc
 .DS_Store
 *.log

@@ -82,3 +82,64 @@ export interface PaperclipEvent {
   payload?: unknown;
   at?: string;
 }
+
+// V2 — Channels (ROU-53 Nostr, ROU-54 Telegram).
+export type ChannelType = "nostr" | "telegram";
+
+export interface ChannelTypeDescriptor {
+  type: ChannelType | string;
+  label: string;
+  description?: string;
+  credentialSchemaSummary?: string;
+  phase?: number;
+}
+
+export interface Channel {
+  id: string;
+  agentId: string;
+  type: ChannelType | string;
+  label?: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+// V2 — Layers (ROU-40).
+export interface LayerTypeDescriptor {
+  type: string;
+  label: string;
+  description: string;
+  configSchemaSummary: string;
+}
+
+export interface Layer {
+  id: string;
+  agentId: string;
+  companyId: string;
+  layerType: string;
+  enabled: boolean;
+  position: number;
+  config: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  companyId: string;
+  agentId: string | null;
+  runId?: string | null;
+  direction: string;
+  kind: string;
+  body: Record<string, unknown>;
+  redactedBody?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface V2Stub {
+  error: string;
+  message: string;
+  feature?: string;
+  phase?: number;
+}

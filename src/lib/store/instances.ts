@@ -1,6 +1,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { createSecretStorage } from "@/lib/store/secret-storage";
 
 export interface Instance {
   id: string;
@@ -74,7 +75,7 @@ export const useInstanceStore = create<InstanceState>()(
             removeItem: () => undefined,
           };
         }
-        return window.localStorage;
+        return createSecretStorage();
       }),
       onRehydrateStorage: () => (state) => state?.setHydrated(true),
       partialize: (s) => ({ instances: s.instances, activeId: s.activeId }),

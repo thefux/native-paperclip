@@ -11,12 +11,15 @@ versioned, and signed independently.
 
 ## Status
 
-Phase 1 scaffold:
+Phase 1 scaffold + V2 (Phase 7) surfaces:
 
 - [x] Workspace, build config, lint config
-- [x] Multi-instance picker with persisted secure-ish storage (localStorage today, OS keystore via `tauri-plugin-store` is the wired-up next step)
+- [x] Multi-instance picker (`{ baseUrl, apiKey }`) persisted via `tauri-plugin-store` (OS-encrypted file) with `localStorage` fallback for the web preview
+- [x] `pck_…` API-key onboarding (validated via `GET /api/agents/me`)
 - [x] Bearer-auth API client (`createClient(instance)`)
 - [x] Inbox / Issue detail / Routines / Approvals views
+- [x] Channels view — list + add (Nostr / Telegram), test, ad-hoc DM, graceful 501 banner while ROU-53 / ROU-54 ship
+- [x] Layers view — stack list, reorder, enable / disable, edit JSON config, audit-log viewer
 - [x] Issue mutations: status change, post comment
 - [x] Routine "Run now" action
 - [x] WebSocket subscriber against `/api/companies/:cid/events/ws`
@@ -112,9 +115,24 @@ build host:
 ## Configuration
 
 The app stores instance records (`{ baseUrl, apiKey, defaultCompanyId }`)
-locally per device. Add an instance from the onboarding screen by pasting
-the Paperclip API URL plus an API key — the app calls `GET /api/agents/me`
-to validate before saving.
+per device. Add an instance from the onboarding screen by pasting the
+Paperclip URL plus a `pck_…` API key (issued by
+`POST /api/companies/:cid/api-keys` once Phase 6 / ROU-42 is deployed —
+V2 listens on `:3210`). The app calls `GET /api/agents/me` to validate
+before saving.
+
+Secrets are persisted by `@tauri-apps/plugin-store` to a per-OS encrypted
+file (the Tauri-managed app data dir). When running the bare web preview
+without Tauri, the persistence layer falls back to `localStorage` so dev
+flows still work.
+
+### V2 surfaces
+
+The Channels and Layers screens require the V2 server (port `:3210`,
+`FEATURE_V2=1`). When a route returns the structured `not_implemented`
+envelope, the UI shows a "Phase X — shipping in ROU-…" banner instead of
+a raw error so the screen lights up automatically once the dependency
+phase ships.
 
 ## Known gotcha: `NODE_ENV`
 
