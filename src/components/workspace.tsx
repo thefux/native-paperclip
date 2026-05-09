@@ -177,7 +177,7 @@ export function Workspace() {
         )}
         {tab === "approvals" && (
           <section className="flex-1 border-r border-border">
-            <ApprovalsView />
+            <ApprovalsView onOpenIssue={openIssueAndFocusInbox} />
           </section>
         )}
         {tab === "channels" && (
