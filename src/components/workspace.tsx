@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useInstanceStore } from "@/lib/store/instances";
 import { useActiveIdentityRefresh } from "@/lib/store/identity-refresh";
+import { useRealtimeNotifications } from "@/lib/desktop/use-realtime-notifications";
 import { InstanceSwitcher } from "@/components/instance-switcher";
 import { SearchBar } from "@/components/search-bar";
 import { ConnectionHealthBanner } from "@/components/connection-health-banner";
@@ -53,6 +54,8 @@ export function Workspace() {
     setTab("inbox");
     setOpenIssueId(issueId);
   }
+
+  useRealtimeNotifications(openIssueAndFocusInbox);
 
   if (!active) return null;
 
