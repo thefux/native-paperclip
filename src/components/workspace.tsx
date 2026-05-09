@@ -15,6 +15,7 @@ import { DashboardView } from "@/components/views/dashboard-view";
 import { ProjectsView } from "@/components/views/projects-view";
 import { GoalsView } from "@/components/views/goals-view";
 import { AgentsView } from "@/components/views/agents-view";
+import { SkillsView } from "@/components/views/skills-view";
 import { cn } from "@/lib/utils";
 import {
   Inbox,
@@ -27,6 +28,7 @@ import {
   Target,
   Briefcase,
   Users,
+  ScrollText,
 } from "lucide-react";
 
 type Tab =
@@ -38,7 +40,8 @@ type Tab =
   | "routines"
   | "approvals"
   | "channels"
-  | "layers";
+  | "layers"
+  | "audit";
 
 export function Workspace() {
   const active = useInstanceStore((s) => s.active());
@@ -121,6 +124,13 @@ export function Workspace() {
           >
             Layers
           </TabButton>
+          <TabButton
+            active={tab === "audit"}
+            onClick={() => setTab("audit")}
+            icon={<ScrollText size={14} />}
+          >
+            Audit
+          </TabButton>
         </nav>
         <div className="ml-auto flex items-center gap-3">
           <SearchBar onOpen={openIssueAndFocusInbox} />
@@ -188,6 +198,11 @@ export function Workspace() {
         {tab === "layers" && (
           <section className="flex-1 border-r border-border">
             <LayersView />
+          </section>
+        )}
+        {tab === "audit" && (
+          <section className="flex-1 border-r border-border">
+            <SkillsView />
           </section>
         )}
       </main>
