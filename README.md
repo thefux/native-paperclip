@@ -9,9 +9,51 @@ This repo is the implementation of the plan attached to issue
 a sibling package inside the Paperclip monorepo, so it can be installed,
 versioned, and signed independently.
 
+## Releases
+
+Pre-built binaries are published to [GitHub Releases](https://github.com/thefux/native-paperclip/releases) on every `v*` tag.
+
+### macOS (Apple Silicon + Intel)
+
+Download the `.dmg` for your architecture from the latest release:
+
+| Artifact | Architecture |
+|---|---|
+| `Paperclip Native_<version>_aarch64.dmg` | Apple Silicon (M1/M2/M3) |
+| `Paperclip Native_<version>_x64.dmg` | Intel x86_64 |
+
+**Built by GitHub Actions** — `macos-14` runner (Apple Silicon) and `macos-13` runner (Intel). Triggered automatically on every `v*` tag push.
+
+**Gatekeeper workaround (unsigned builds):** macOS will quarantine the `.dmg` because the binary is not notarized with an Apple Developer certificate. After mounting and copying the app to `/Applications`, run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Paperclip Native.app"
+```
+
+Then launch normally. Apple Developer signing and notarization is tracked as a follow-up.
+
+### Linux
+
+| Package | Architecture | Format |
+|---|---|---|
+| `Paperclip Native_<version>_amd64.deb` | x86_64 | Debian/Ubuntu |
+| `Paperclip Native-<version>-1.x86_64.rpm` | x86_64 | Fedora/RHEL |
+| `Paperclip Native_<version>_amd64.AppImage` | x86_64 | Universal AppImage |
+
+Linux builds are produced by the self-hosted `tauri-linux-builder:noble` Docker image (Ubuntu 24.04 + GTK/WebKit deps) and attached to Gitea releases at `http://localhost:3000/thefux/native-paperclip/releases`. 
+
+### CI
+
+| Workflow | Trigger | Runner |
+|---|---|---|
+| `release-macos.yml` | `v*` tag push → GitHub | `macos-14` (aarch64) + `macos-13` (x86_64) |
+| Linux release | Manual (Docker, self-hosted) | `tauri-linux-builder:noble` |
+
+---
+
 ## Status
 
-`v0.3.0` — V2 Phase 8 (multi-company + web parity, [ROU-84](http://localhost:3000/thefux/paperclipV2/issues/ROU-84)):
+`v0.4.0-rc.1` — parity wave (Phases A, B, C1):
 
 - [x] Workspace, build config, lint config
 - [x] Multi-company connections — `Instance` carries `companyName` / `role` / `displayName`, switcher renders distinct rows for two `pck_` tokens on the same `baseUrl`, "Add another company on `<host>`" footer pre-fills the onboarding URL, identity refresh on activation, query-key isolation (`[instance.id, …]`), `health: ok|degraded|unknown` flag with a yellow 401-driven re-auth banner.
@@ -30,9 +72,10 @@ versioned, and signed independently.
 - [x] **Channels** — list + add (Nostr / Telegram), test, ad-hoc DM, graceful 501 banner while V2 phases ship.
 - [x] **Layers** — stack list, reorder, enable / disable, edit JSON config, audit-log viewer.
 - [x] WebSocket subscriber against `/api/companies/:cid/events/ws` with **OS-level notifications** for new comments on assigned issues, approvals needing attention, and routine failures.
+- [x] GHA macOS release workflow (`release-macos.yml`) — `.dmg` for aarch64 + x86_64 on `v*` tags.
 - [ ] Mobile builds (Android first, iOS pending signing).
 - [ ] Push notifications (server-side relay required).
-- [ ] CI workflow (Gitea Actions).
+- [ ] Apple Developer signing / notarization.
 - [ ] Tray icon + cross-app deep links (`paperclip://issue/<id>`) — needs `tauri-plugin-deep-link` + Rust rebuild.
 
 ## Architecture (one-liner per layer)
