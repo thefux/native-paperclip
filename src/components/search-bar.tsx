@@ -30,8 +30,7 @@ const PRIORITY_TONE: Record<IssuePriority, "neutral" | "info" | "warn" | "danger
  * `onOpen`. Escape clears + closes the dropdown.
  */
 export function SearchBar({ onOpen }: { onOpen: (issueId: string) => void }) {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);

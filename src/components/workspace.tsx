@@ -18,6 +18,8 @@ import { GoalsView } from "@/components/views/goals-view";
 import { AgentsView } from "@/components/views/agents-view";
 import { SkillsView } from "@/components/views/skills-view";
 import { AuditView } from "@/components/views/audit-view";
+import { CompaniesView } from "@/components/views/companies-view";
+import { CompanyChip } from "@/components/company-chip";
 import { BottomNav } from "@/components/shell/bottom-nav";
 import { MoreDrawer } from "@/components/shell/more-drawer";
 import { ALL_TABS, PRIMARY_TABS } from "@/components/shell/tabs";
@@ -92,11 +94,12 @@ export function Workspace() {
           instance switcher + search; primary nav lives in the bottom bar. */}
       <header
         className={cn(
-          "flex items-center gap-3 border-b border-border bg-surface px-4 py-2 pt-safe",
-          isMobile && "px-3",
+          "flex items-center gap-2 border-b border-border bg-surface px-4 py-2 pt-safe",
+          isMobile && "gap-2 px-3",
         )}
       >
         <InstanceSwitcher />
+        <CompanyChip onOpenCompaniesTab={() => setTab("companies")} />
         {!isMobile && (
           <nav className="flex items-center gap-1 text-sm" role="tablist" aria-label="Workspace tabs">
             {ALL_TABS.map((t) => {
@@ -184,6 +187,11 @@ export function Workspace() {
         {tab === "audit" && (
           <section className="flex-1 lg:border-r lg:border-border">
             <AuditView />
+          </section>
+        )}
+        {tab === "companies" && (
+          <section className="flex-1 lg:border-r lg:border-border">
+            <CompaniesView />
           </section>
         )}
       </main>

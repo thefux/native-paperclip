@@ -39,8 +39,7 @@ const DIRECTION_TONE: Record<string, "neutral" | "info" | "warn" | "success"> = 
 };
 
 function AgentAuditLogPanel() {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
   const myAgentId = instance?.identity?.id ?? "";
 
   const [selectedAgent, setSelectedAgent] = useState<string>("");
@@ -202,8 +201,7 @@ function AgentAuditLogPanel() {
 }
 
 function ApiKeyAuditPanel() {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
   const [selectedKey, setSelectedKey] = useState<string>("");
 
   const keys = useQuery<CompanyApiKey[]>({

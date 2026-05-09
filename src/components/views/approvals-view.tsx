@@ -11,8 +11,7 @@ import type { Approval } from "@/lib/api/types";
 type Filter = "pending" | "all";
 
 export function ApprovalsView({ onOpenIssue }: { onOpenIssue?: (id: string) => void } = {}) {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
   const [filter, setFilter] = useState<Filter>("pending");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 

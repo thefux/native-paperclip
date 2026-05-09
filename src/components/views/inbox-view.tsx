@@ -45,9 +45,8 @@ export function InboxView({
   onOpen: (id: string) => void;
   openId: string | null;
 }) {
-  const { instance, client, prefix } = useActiveClient();
+  const { instance, client, prefix, companyId } = useActiveClient();
   const qc = useQueryClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
   const myAgentId = instance?.identity?.id ?? "";
 
   const [scope, setScope] = useState<AssigneeScope>("me");

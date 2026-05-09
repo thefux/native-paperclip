@@ -19,8 +19,7 @@ const STATUS_TONE: Record<IssueStatus, "neutral" | "info" | "warn" | "danger" | 
 };
 
 export function GoalsView({ onOpenIssue }: { onOpenIssue: (id: string) => void }) {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -111,8 +110,7 @@ function GoalDetail({
   goal: Goal | null;
   onOpenIssue: (id: string) => void;
 }) {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
 
   const issues = useQuery<InboxIssue[]>({
     queryKey: [prefix, "goal-issues", goal?.id] as const,

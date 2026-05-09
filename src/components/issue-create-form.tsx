@@ -36,9 +36,8 @@ export function IssueCreateForm({
   onClose,
   onCreated,
 }: IssueCreateFormProps) {
-  const { instance, client, prefix } = useActiveClient();
+  const { instance, client, prefix, companyId } = useActiveClient();
   const qc = useQueryClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
 
   const [title, setTitle] = useState(initialTitle ?? "");
   const [description, setDescription] = useState("");

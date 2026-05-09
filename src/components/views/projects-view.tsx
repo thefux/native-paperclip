@@ -19,8 +19,7 @@ const STATUS_TONE: Record<IssueStatus, "neutral" | "info" | "warn" | "danger" | 
 };
 
 export function ProjectsView({ onOpenIssue }: { onOpenIssue: (id: string) => void }) {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -113,8 +112,7 @@ function ProjectDetail({
   project: Project | null;
   onOpenIssue: (id: string) => void;
 }) {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
 
   const issues = useQuery<InboxIssue[]>({
     queryKey: [prefix, "project-issues", project?.id] as const,

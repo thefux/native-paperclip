@@ -24,8 +24,7 @@ const STATUS_TONES: Record<
  * just hide the corresponding card.
  */
 export function DashboardView({ onOpenIssue }: { onOpenIssue: (id: string) => void }) {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
 
   const dash = useQuery<DashboardSummary | null>({
     queryKey: [prefix, "dashboard", companyId] as const,

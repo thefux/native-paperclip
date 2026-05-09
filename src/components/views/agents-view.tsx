@@ -16,8 +16,7 @@ import type {
 import { RunTranscript } from "@/components/views/run-transcript";
 
 export function AgentsView() {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
+  const { instance, client, prefix, companyId } = useActiveClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showHire, setShowHire] = useState(false);
 

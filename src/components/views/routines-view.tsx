@@ -15,9 +15,8 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import type { AgentSummary, Routine } from "@/lib/api/types";
 
 export function RoutinesView() {
-  const { instance, client, prefix } = useActiveClient();
+  const { instance, client, prefix, companyId } = useActiveClient();
   const qc = useQueryClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 

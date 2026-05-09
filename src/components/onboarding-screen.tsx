@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useInstanceStore } from "@/lib/store/instances";
+import { useInstanceStore, type InstanceCompany } from "@/lib/store/instances";
 import { ApiError, createClient } from "@/lib/api/client";
 import { resolveIdentity, type ResolvedIdentity } from "@/lib/api/me";
 import { Button, Card, Input } from "@/components/ui";
@@ -29,6 +29,7 @@ export function OnboardingScreen({
 } = {}) {
   const add = useInstanceStore((s) => s.add);
   const setActive = useInstanceStore((s) => s.setActive);
+  const setActiveCompany = useInstanceStore((s) => s.setActiveCompany);
   const [label, setLabel] = useState("");
   const [baseUrl, setBaseUrl] = useState(prefillBaseUrl ?? "");
   const [apiKey, setApiKey] = useState("");
@@ -36,6 +37,11 @@ export function OnboardingScreen({
   const [needCompanyId, setNeedCompanyId] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [defaultPicker, setDefaultPicker] = useState<{
+    instanceId: string;
+    companies: InstanceCompany[];
+    selectedId: string;
+  } | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,6 +59,9 @@ export function OnboardingScreen({
         baseUrl,
         apiKey,
         defaultCompanyId: identity.companyId,
+        activeCompanyId: identity.companyId,
+        accessibleCompanies: identity.accessibleCompanies,
+        actorType: identity.actorType,
         identity: {
           id: identity.id ?? "",
           companyId: identity.companyId,
@@ -66,6 +75,19 @@ export function OnboardingScreen({
         lastSeenAt: nowIso,
       });
       setActive(instance.id);
+      // Board users frequently belong to several companies. Surface a default
+      // picker before dismissing onboarding so the first view they see is the
+      // one they expect, instead of whatever order /api/me happened to return.
+      if (
+        identity.actorType === "board" &&
+        identity.accessibleCompanies.length > 1
+      ) {
+        setDefaultPicker({
+          instanceId: instance.id,
+          companies: identity.accessibleCompanies,
+          selectedId: identity.companyId,
+        });
+      }
     } catch (err) {
       const message = formatOnboardingError(err);
       setError(message);
@@ -107,6 +129,61 @@ export function OnboardingScreen({
   }
 
   const isAddAnother = Boolean(prefillBaseUrl);
+
+  if (defaultPicker) {
+    return (
+      <main className={cn("grid min-h-screen place-items-center px-4", className)}>
+        <Card className="w-full max-w-md space-y-4">
+          <header className="space-y-1">
+            <h1 className="text-xl font-semibold">Pick a default company</h1>
+            <p className="text-sm text-muted">
+              This board user has access to {defaultPicker.companies.length} companies on this
+              server. The selected one becomes the default view; you can switch any time from
+              the Company chip in the header (next to the server-connection switcher).
+            </p>
+          </header>
+          <ul className="space-y-1.5">
+            {defaultPicker.companies.map((c) => (
+              <li key={c.id}>
+                <label
+                  className={cn(
+                    "flex cursor-pointer items-start gap-3 rounded-md border border-border bg-bg p-3 hover:bg-surface",
+                    defaultPicker.selectedId === c.id && "border-accent/60 bg-accent/10",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="default-company"
+                    className="mt-1"
+                    checked={defaultPicker.selectedId === c.id}
+                    onChange={() =>
+                      setDefaultPicker((p) => (p ? { ...p, selectedId: c.id } : p))
+                    }
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{c.name ?? c.id}</div>
+                    <div className="truncate text-[11px] text-muted">
+                      {c.issuePrefix ? `${c.issuePrefix} · ` : ""}
+                      <span className="font-mono">{c.id}</span>
+                    </div>
+                  </div>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <Button
+            className="w-full"
+            onClick={() => {
+              setActiveCompany(defaultPicker.instanceId, defaultPicker.selectedId);
+              setDefaultPicker(null);
+            }}
+          >
+            Continue
+          </Button>
+        </Card>
+      </main>
+    );
+  }
 
   return (
     <main className={cn("grid min-h-screen place-items-center px-4", className)}>

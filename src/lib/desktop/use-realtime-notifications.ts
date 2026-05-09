@@ -26,7 +26,8 @@ export function useRealtimeNotifications(
   useEffect(() => {
     if (!active) return;
     const myAgentId = active.identity?.id;
-    const companyId = active.defaultCompanyId ?? active.identity?.companyId;
+    const companyId =
+      active.activeCompanyId ?? active.identity?.companyId ?? active.defaultCompanyId;
     if (!companyId) return;
 
     let cancelled = false;
@@ -43,7 +44,15 @@ export function useRealtimeNotifications(
       cancelled = true;
       unsubscribe();
     };
-  }, [active?.id, active?.baseUrl, active?.apiKey, active?.defaultCompanyId, active?.identity?.id, active]);
+  }, [
+    active?.id,
+    active?.baseUrl,
+    active?.apiKey,
+    active?.activeCompanyId,
+    active?.defaultCompanyId,
+    active?.identity?.id,
+    active,
+  ]);
 }
 
 function handleEvent(

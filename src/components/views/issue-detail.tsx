@@ -31,9 +31,8 @@ export function IssueDetail({
   /** Mobile drilldown: render a back button that pops the detail and returns to the list. */
   onBack?: () => void;
 }) {
-  const { instance, client, prefix } = useActiveClient();
+  const { instance, client, prefix, companyId } = useActiveClient();
   const qc = useQueryClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
 
   const issue = useQuery<Issue | null>({
     queryKey: [prefix, "issue", issueId] as const,

@@ -31,7 +31,8 @@ export type Tab =
   | "channels"
   | "layers"
   | "audit"
-  | "skills";
+  | "skills"
+  | "companies";
 
 export interface TabDescriptor {
   id: Tab;
@@ -52,6 +53,7 @@ export const ALL_TABS: TabDescriptor[] = [
   { id: "layers", label: "Layers", icon: LayersIcon },
   { id: "skills", label: "Skills", icon: Sparkles },
   { id: "audit", label: "Audit", icon: ScrollText },
+  { id: "companies", label: "Companies", icon: Building2 },
 ];
 
 /** Mobile primary bottom-tab bar (Inbox · Dashboard · Approvals · Channels · More). */
@@ -72,7 +74,6 @@ export interface PlaceholderDescriptor {
 }
 
 export const FUTURE_PLACEHOLDERS: PlaceholderDescriptor[] = [
-  { id: "companies", label: "Companies", icon: Building2, hint: "Phase B" },
   { id: "workspaces", label: "Workspaces", icon: ListChecks, hint: "Phase F" },
   { id: "activity", label: "Activity", icon: Activity, hint: "Phase G" },
   { id: "costs", label: "Costs", icon: CircleDollarSign, hint: "Phase G" },

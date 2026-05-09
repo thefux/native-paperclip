@@ -22,8 +22,7 @@ const CREDENTIAL_HINT: Record<string, string> = {
 };
 
 export function ChannelsView() {
-  const { instance: active, client, prefix } = useActiveClient();
-  const companyId = active?.identity?.companyId ?? active?.defaultCompanyId ?? "";
+  const { instance: active, client, prefix, companyId } = useActiveClient();
   const [agentId, setAgentId] = useState<string>(active?.identity?.id ?? "");
 
   const agents = useQuery<AgentSummary[]>({
@@ -146,7 +145,7 @@ function PhaseStubBanner({
 }
 
 function ChannelCard({ channel, onDelete }: { channel: Channel; onDelete: () => void }) {
-  const { instance: active, client, prefix } = useActiveClient();
+  const { instance: active, client, prefix, companyId } = useActiveClient();
   const [recipient, setRecipient] = useState("");
   const [body, setBody] = useState("");
   const [testStatus, setTestStatus] = useState<string | null>(null);

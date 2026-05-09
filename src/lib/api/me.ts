@@ -1,4 +1,5 @@
 import { ApiClient, ApiError } from "@/lib/api/client";
+import type { InstanceActorType, InstanceCompany } from "@/lib/store/instances";
 
 export interface ResolvedIdentity {
   id?: string;
@@ -8,6 +9,10 @@ export interface ResolvedIdentity {
   role?: string;
   displayName?: string;
   source: "api/me" | "agents/me" | "manual-cid";
+  /** Actor type the server saw. `manual-cid` for the legacy escape hatch. */
+  actorType: InstanceActorType;
+  /** Every company this token can access (board: N, pck_: 1, agent: 1). Empty for manual-cid. */
+  accessibleCompanies: InstanceCompany[];
 }
 
 interface MeResponse {
@@ -22,7 +27,7 @@ interface MeResponse {
   };
   agent?: { id: string; name: string; role?: string } | null;
   company?: { id: string; name: string; issuePrefix?: string | null } | null;
-  companies?: { id: string; name: string }[];
+  companies?: { id: string; name: string; issuePrefix?: string | null }[];
 }
 
 interface AgentsMeResponse {
@@ -50,12 +55,17 @@ export async function resolveIdentity(
   try {
     const me = await client.get<MeResponse>("/api/me");
     const actor = me.actor;
-    const companyId = actor.companyId ?? me.company?.id ?? me.companies?.[0]?.id;
+    const companies = collectCompanies(me);
+    // Prefer the requested companyId when the caller already knows it (used by
+    // the activation refresh hook to keep the active company across reloads).
+    const preferredCompanyId =
+      manualCompanyId ?? actor.companyId ?? me.company?.id ?? companies[0]?.id;
+    const companyId = preferredCompanyId;
     if (companyId) {
       const companyName =
         me.company?.id === companyId
           ? me.company?.name
-          : me.companies?.find((c) => c.id === companyId)?.name;
+          : companies.find((c) => c.id === companyId)?.name;
       return {
         id: actor.agentId ?? actor.userId ?? me.agent?.id ?? undefined,
         companyId,
@@ -63,6 +73,8 @@ export async function resolveIdentity(
         role: me.agent?.role ?? actor.type,
         displayName: me.agent?.name ?? actor.userName ?? me.company?.name ?? undefined,
         source: "api/me",
+        actorType: normalizeActorType(actor.type),
+        accessibleCompanies: companies,
       };
     }
     // /api/me responded but didn't include a companyId (e.g. board user with
@@ -86,6 +98,10 @@ export async function resolveIdentity(
       role: me.role,
       displayName: me.name,
       source: "agents/me",
+      actorType: "agent",
+      accessibleCompanies: [
+        { id: me.companyId, name: companyName ?? undefined },
+      ],
     };
   } catch (err) {
     if (!(err instanceof ApiError) || (err.status !== 401 && err.status !== 403)) {
@@ -115,7 +131,30 @@ export async function resolveIdentity(
     companyId: manualCompanyId,
     companyName,
     source: "manual-cid",
+    actorType: "manual-cid",
+    accessibleCompanies: [{ id: manualCompanyId, name: companyName ?? undefined }],
   };
+}
+
+function collectCompanies(me: MeResponse): InstanceCompany[] {
+  const out: InstanceCompany[] = [];
+  const seen = new Set<string>();
+  const push = (c: { id?: string | null; name?: string; issuePrefix?: string | null } | null | undefined) => {
+    if (!c?.id || seen.has(c.id)) return;
+    seen.add(c.id);
+    out.push({ id: c.id, name: c.name, issuePrefix: c.issuePrefix ?? undefined });
+  };
+  if (Array.isArray(me.companies)) {
+    for (const c of me.companies) push(c);
+  }
+  push(me.company);
+  if (me.actor?.companyId) push({ id: me.actor.companyId });
+  return out;
+}
+
+function normalizeActorType(type: string | undefined): InstanceActorType {
+  if (type === "agent" || type === "company_api_key" || type === "board") return type;
+  return "manual-cid";
 }
 
 async function fetchCompanyName(

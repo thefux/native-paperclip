@@ -15,8 +15,7 @@ interface AgentSummary {
 }
 
 export function LayersView() {
-  const { instance: active, client, prefix } = useActiveClient();
-  const companyId = active?.identity?.companyId ?? active?.defaultCompanyId ?? "";
+  const { instance: active, client, prefix, companyId } = useActiveClient();
   const [agentId, setAgentId] = useState<string>(active?.identity?.id ?? "");
   const [layerFilter, setLayerFilter] = useState<string>("");
 
@@ -74,7 +73,7 @@ function LayersForAgent({
   layerFilter: string;
   setLayerFilter: (v: string) => void;
 }) {
-  const { instance: active, client, prefix } = useActiveClient();
+  const { instance: active, client, prefix, companyId } = useActiveClient();
   const qc = useQueryClient();
 
   const types = useQuery<LayerTypeDescriptor[]>({
@@ -160,7 +159,7 @@ function LayerCard({
   onMoveDown: () => void;
   onSelect: () => void;
 }) {
-  const { instance: active, client, prefix } = useActiveClient();
+  const { instance: active, client, prefix, companyId } = useActiveClient();
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draftConfig, setDraftConfig] = useState(JSON.stringify(layer.config ?? {}, null, 2));
@@ -293,7 +292,7 @@ function LayerCard({
 }
 
 function AddLayerForm({ agentId, types }: { agentId: string; types: LayerTypeDescriptor[] }) {
-  const { instance: active, client, prefix } = useActiveClient();
+  const { instance: active, client, prefix, companyId } = useActiveClient();
   const qc = useQueryClient();
   const [layerType, setLayerType] = useState<string>(types[0]?.type ?? "audit");
   const [config, setConfig] = useState("{}");
@@ -377,7 +376,7 @@ function AddLayerForm({ agentId, types }: { agentId: string; types: LayerTypeDes
 }
 
 function AuditLogPanel({ agentId, layerFilter }: { agentId: string; layerFilter: string }) {
-  const { instance: active, client, prefix } = useActiveClient();
+  const { instance: active, client, prefix, companyId } = useActiveClient();
 
   const audit = useQuery<AuditEntry[]>({
     queryKey: [prefix, "layer-audit", agentId] as const,
