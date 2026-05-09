@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { useInstanceStore } from "@/lib/store/instances";
-import { ApiError, createClient } from "@/lib/api/client";
+import { useState } from "react";
+import { useActiveClient } from "@/lib/store/use-active-client";
+import { ApiError } from "@/lib/api/client";
 import { layers, unwrapAudit } from "@/lib/api/layers";
 import { Badge, Button, Card } from "@/components/ui";
 import { formatRelativeTime } from "@/lib/utils";
@@ -15,14 +15,13 @@ interface AgentSummary {
 }
 
 export function LayersView() {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
+  const { instance: active, client, prefix } = useActiveClient();
   const companyId = active?.identity?.companyId ?? active?.defaultCompanyId ?? "";
   const [agentId, setAgentId] = useState<string>(active?.identity?.id ?? "");
   const [layerFilter, setLayerFilter] = useState<string>("");
 
   const agents = useQuery<AgentSummary[]>({
-    queryKey: ["agents", client?.baseUrl, companyId] as const,
+    queryKey: [prefix, "agents", companyId] as const,
     queryFn: async () =>
       client && companyId ? client.get<AgentSummary[]>(`/api/companies/${companyId}/agents`) : [],
     enabled: !!client && !!companyId,
@@ -75,18 +74,17 @@ function LayersForAgent({
   layerFilter: string;
   setLayerFilter: (v: string) => void;
 }) {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
+  const { instance: active, client, prefix } = useActiveClient();
   const qc = useQueryClient();
 
   const types = useQuery<LayerTypeDescriptor[]>({
-    queryKey: ["layer-types", client?.baseUrl] as const,
+    queryKey: [prefix, "layer-types"] as const,
     queryFn: async () => (client ? (await layers.listTypes(client)).types : []),
     enabled: !!client,
   });
 
   const stack = useQuery<Layer[]>({
-    queryKey: ["layers", client?.baseUrl, agentId] as const,
+    queryKey: [prefix, "layers", agentId] as const,
     queryFn: async () => (client ? (await layers.listForAgent(client, agentId)).layers : []),
     enabled: !!client && !!agentId,
   });
@@ -97,7 +95,7 @@ function LayersForAgent({
       return layers.reorder(client, agentId, orderedIds);
     },
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["layers", client?.baseUrl, agentId] }),
+      qc.invalidateQueries({ queryKey: [prefix, "layers", agentId] }),
   });
 
   function moveLayer(idx: number, delta: -1 | 1) {
@@ -162,8 +160,7 @@ function LayerCard({
   onMoveDown: () => void;
   onSelect: () => void;
 }) {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
+  const { instance: active, client, prefix } = useActiveClient();
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [draftConfig, setDraftConfig] = useState(JSON.stringify(layer.config ?? {}, null, 2));
@@ -177,7 +174,7 @@ function LayerCard({
     onSuccess: () => {
       setError(null);
       setEditing(false);
-      qc.invalidateQueries({ queryKey: ["layers", client?.baseUrl, agentId] });
+      qc.invalidateQueries({ queryKey: [prefix, "layers", agentId] });
     },
     onError: (err) => {
       if (err instanceof ApiError) {
@@ -195,7 +192,7 @@ function LayerCard({
       return layers.remove(client, agentId, layer.id);
     },
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["layers", client?.baseUrl, agentId] }),
+      qc.invalidateQueries({ queryKey: [prefix, "layers", agentId] }),
   });
 
   function saveConfig() {
@@ -296,8 +293,7 @@ function LayerCard({
 }
 
 function AddLayerForm({ agentId, types }: { agentId: string; types: LayerTypeDescriptor[] }) {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
+  const { instance: active, client, prefix } = useActiveClient();
   const qc = useQueryClient();
   const [layerType, setLayerType] = useState<string>(types[0]?.type ?? "audit");
   const [config, setConfig] = useState("{}");
@@ -317,7 +313,7 @@ function AddLayerForm({ agentId, types }: { agentId: string; types: LayerTypeDes
     onSuccess: () => {
       setError(null);
       setConfig("{}");
-      qc.invalidateQueries({ queryKey: ["layers", client?.baseUrl, agentId] });
+      qc.invalidateQueries({ queryKey: [prefix, "layers", agentId] });
     },
     onError: (err) => {
       if (err instanceof ApiError) {
@@ -381,11 +377,10 @@ function AddLayerForm({ agentId, types }: { agentId: string; types: LayerTypeDes
 }
 
 function AuditLogPanel({ agentId, layerFilter }: { agentId: string; layerFilter: string }) {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
+  const { instance: active, client, prefix } = useActiveClient();
 
   const audit = useQuery<AuditEntry[]>({
-    queryKey: ["layer-audit", client?.baseUrl, agentId] as const,
+    queryKey: [prefix, "layer-audit", agentId] as const,
     queryFn: async () =>
       client ? unwrapAudit(await layers.audit(client, agentId, 50)) : [],
     enabled: !!client && !!agentId,

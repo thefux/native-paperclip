@@ -1,7 +1,9 @@
 
 import { useState } from "react";
 import { useInstanceStore } from "@/lib/store/instances";
+import { useActiveIdentityRefresh } from "@/lib/store/identity-refresh";
 import { InstanceSwitcher } from "@/components/instance-switcher";
+import { ConnectionHealthBanner } from "@/components/connection-health-banner";
 import { InboxView } from "@/components/views/inbox-view";
 import { IssueDetail } from "@/components/views/issue-detail";
 import { RoutinesView } from "@/components/views/routines-view";
@@ -24,8 +26,13 @@ export function Workspace() {
   const active = useInstanceStore((s) => s.active());
   const [tab, setTab] = useState<Tab>("inbox");
   const [openIssueId, setOpenIssueId] = useState<string | null>(null);
+  useActiveIdentityRefresh();
 
   if (!active) return null;
+
+  const headerLabel = active.identity?.displayName
+    ? `${active.identity.displayName}${active.identity.role ? ` · ${active.identity.role}` : ""}`
+    : active.label;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -66,9 +73,11 @@ export function Workspace() {
         </nav>
         <div className="ml-auto flex items-center gap-2 text-xs text-muted">
           <ListChecks size={14} />
-          <span>{active.label}</span>
+          <span>{headerLabel}</span>
         </div>
       </header>
+
+      <ConnectionHealthBanner />
 
       <main className="flex flex-1">
         {tab === "inbox" && (

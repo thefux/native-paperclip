@@ -14,7 +14,15 @@ export class ApiError extends Error {
 
 export type ApiClient = ReturnType<typeof createClient>;
 
-export function createClient(instance: Pick<Instance, "baseUrl" | "apiKey">) {
+export interface CreateClientOptions {
+  /** Fires when any request returns 401/403. The chrome uses this to flag the connection degraded so a re-auth banner can render. */
+  onUnauthorized?: (status: number) => void;
+}
+
+export function createClient(
+  instance: Pick<Instance, "baseUrl" | "apiKey">,
+  options: CreateClientOptions = {},
+) {
   const base = trimTrailingSlash(instance.baseUrl);
 
   async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -37,6 +45,13 @@ export function createClient(instance: Pick<Instance, "baseUrl" | "apiKey">) {
         errBody = await res.json();
       } catch {
         errBody = await res.text().catch(() => undefined);
+      }
+      if ((res.status === 401 || res.status === 403) && options.onUnauthorized) {
+        try {
+          options.onUnauthorized(res.status);
+        } catch {
+          // The notifier should never throw, but if it does don't mask the original error.
+        }
       }
       throw new ApiError(res.status, `${method} ${path} → ${res.status}`, errBody);
     }

@@ -2,14 +2,35 @@
 import { useState } from "react";
 import { useInstanceStore } from "@/lib/store/instances";
 import { ApiError, createClient } from "@/lib/api/client";
-import { resolveIdentity } from "@/lib/api/me";
+import { resolveIdentity, type ResolvedIdentity } from "@/lib/api/me";
 import { Button, Card, Input } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
-export function OnboardingScreen() {
+/** Derives a display label from the resolved identity. Pattern: "<companyName> @ <host>". */
+export function deriveInstanceLabel(baseUrl: string, identity: ResolvedIdentity): string {
+  let host = baseUrl;
+  try {
+    host = new URL(baseUrl).host;
+  } catch {
+    // baseUrl wasn't a parseable URL — fall back to the raw string.
+  }
+  if (identity.companyName) return `${identity.companyName} @ ${host}`;
+  return host;
+}
+
+export function OnboardingScreen({
+  prefillBaseUrl,
+  onCancel,
+  className,
+}: {
+  prefillBaseUrl?: string;
+  onCancel?: () => void;
+  className?: string;
+} = {}) {
   const add = useInstanceStore((s) => s.add);
   const setActive = useInstanceStore((s) => s.setActive);
   const [label, setLabel] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
+  const [baseUrl, setBaseUrl] = useState(prefillBaseUrl ?? "");
   const [apiKey, setApiKey] = useState("");
   const [companyIdInput, setCompanyIdInput] = useState("");
   const [needCompanyId, setNeedCompanyId] = useState(false);
@@ -26,17 +47,23 @@ export function OnboardingScreen() {
         client,
         needCompanyId && companyIdInput.trim() ? companyIdInput.trim() : null,
       );
+      const nowIso = new Date().toISOString();
       const instance = add({
-        label: label || new URL(baseUrl).host,
+        label: label.trim() || deriveInstanceLabel(baseUrl, identity),
         baseUrl,
         apiKey,
         defaultCompanyId: identity.companyId,
         identity: {
           id: identity.id ?? "",
           companyId: identity.companyId,
+          companyName: identity.companyName,
           role: identity.role,
           displayName: identity.displayName,
+          source: identity.source,
+          lastValidatedAt: nowIso,
         },
+        health: "ok",
+        lastSeenAt: nowIso,
       });
       setActive(instance.id);
     } catch (err) {
@@ -79,18 +106,19 @@ export function OnboardingScreen() {
     return err instanceof Error ? err.message : "Failed to validate instance.";
   }
 
+  const isAddAnother = Boolean(prefillBaseUrl);
+
   return (
-    <main className="grid min-h-screen place-items-center px-4">
+    <main className={cn("grid min-h-screen place-items-center px-4", className)}>
       <Card className="w-full max-w-md space-y-4">
         <header className="space-y-1">
-          <h1 className="text-xl font-semibold">Connect a Paperclip instance</h1>
+          <h1 className="text-xl font-semibold">
+            {isAddAnother ? "Add another company on this server" : "Connect a Paperclip instance"}
+          </h1>
           <p className="text-sm text-muted">
-            Paste the Paperclip URL and a <code className="font-mono text-xs">pck_…</code>{" "}
-            API key (issued by{" "}
-            <code className="font-mono text-xs">POST /api/companies/:cid/api-keys</code>). The
-            app validates with <code className="font-mono text-xs">GET /api/me</code> (falling
-            back to <code className="font-mono text-xs">GET /api/agents/me</code> for older
-            deployments) and stores the secret in the OS keystore.
+            {isAddAnother
+              ? "Each `pck_…` API key is scoped to one company. Paste a key for a different company on the same server to add it as a separate connection."
+              : "Paste the Paperclip URL and a `pck_…` API key (issued by `POST /api/companies/:cid/api-keys`). The app validates with `GET /api/me` (falling back to `GET /api/agents/me` for older deployments) and stores the secret in the OS keystore."}
           </p>
         </header>
         <form onSubmit={onSubmit} className="space-y-3">
@@ -139,9 +167,16 @@ export function OnboardingScreen() {
               {error}
             </p>
           )}
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? "Validating…" : "Connect"}
-          </Button>
+          <div className="flex gap-2">
+            {onCancel && (
+              <Button type="button" onClick={onCancel} className="flex-1" variant="ghost">
+                Cancel
+              </Button>
+            )}
+            <Button type="submit" disabled={submitting} className="flex-1">
+              {submitting ? "Validating…" : isAddAnother ? "Add company" : "Connect"}
+            </Button>
+          </div>
         </form>
       </Card>
     </main>

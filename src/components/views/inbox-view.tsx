@@ -1,8 +1,6 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { useInstanceStore } from "@/lib/store/instances";
-import { createClient } from "@/lib/api/client";
+import { useActiveClient } from "@/lib/store/use-active-client";
 import { Badge } from "@/components/ui";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { InboxIssue, IssuePriority, IssueStatus } from "@/lib/api/types";
@@ -31,11 +29,10 @@ export function InboxView({
   onOpen: (id: string) => void;
   openId: string | null;
 }) {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
+  const { client, prefix } = useActiveClient();
 
   const inbox = useQuery<InboxIssue[]>({
-    queryKey: ["inbox", client?.baseUrl ?? "none"] as const,
+    queryKey: [prefix, "inbox"] as const,
     queryFn: async () => {
       if (!client) return [];
       return client.get<InboxIssue[]>("/api/agents/me/inbox-lite");

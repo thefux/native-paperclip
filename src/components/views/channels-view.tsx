@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { useInstanceStore } from "@/lib/store/instances";
-import { createClient, ApiError } from "@/lib/api/client";
+import { useState } from "react";
+import { useActiveClient } from "@/lib/store/use-active-client";
+import { ApiError } from "@/lib/api/client";
 import { channels, unwrapChannels } from "@/lib/api/channels";
 import { detectV2Stub } from "@/lib/api/v2";
 import { Badge, Button, Card, Input } from "@/components/ui";
@@ -22,13 +22,12 @@ const CREDENTIAL_HINT: Record<string, string> = {
 };
 
 export function ChannelsView() {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
+  const { instance: active, client, prefix } = useActiveClient();
   const companyId = active?.identity?.companyId ?? active?.defaultCompanyId ?? "";
   const [agentId, setAgentId] = useState<string>(active?.identity?.id ?? "");
 
   const agents = useQuery<AgentSummary[]>({
-    queryKey: ["agents", client?.baseUrl, companyId] as const,
+    queryKey: [prefix, "agents", companyId] as const,
     queryFn: async () =>
       client && companyId ? client.get<AgentSummary[]>(`/api/companies/${companyId}/agents`) : [],
     enabled: !!client && !!companyId,
@@ -64,19 +63,18 @@ export function ChannelsView() {
 }
 
 function ChannelsForAgent({ agentId }: { agentId: string }) {
-  const active = useInstanceStore((s) => s.active());
+  const { client, prefix } = useActiveClient();
   const qc = useQueryClient();
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
 
   const types = useQuery<{ types: ChannelTypeDescriptor[]; phase?: number }>({
-    queryKey: ["channel-types", client?.baseUrl] as const,
+    queryKey: [prefix, "channel-types"] as const,
     queryFn: async () => (client ? channels.listTypes(client) : { types: [] }),
     enabled: !!client,
     retry: false,
   });
 
   const list = useQuery<Channel[]>({
-    queryKey: ["channels", client?.baseUrl, agentId] as const,
+    queryKey: [prefix, "channels", agentId] as const,
     queryFn: async () => (client ? unwrapChannels(await channels.listForAgent(client, agentId)) : []),
     enabled: !!client && !!agentId,
     retry: false,
@@ -90,7 +88,7 @@ function ChannelsForAgent({ agentId }: { agentId: string }) {
       return channels.remove(client, channelId);
     },
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["channels", client?.baseUrl, agentId] }),
+      qc.invalidateQueries({ queryKey: [prefix, "channels", agentId] }),
   });
 
   return (
@@ -148,8 +146,7 @@ function PhaseStubBanner({
 }
 
 function ChannelCard({ channel, onDelete }: { channel: Channel; onDelete: () => void }) {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
+  const { instance: active, client, prefix } = useActiveClient();
   const [recipient, setRecipient] = useState("");
   const [body, setBody] = useState("");
   const [testStatus, setTestStatus] = useState<string | null>(null);
@@ -248,9 +245,8 @@ function AddChannelForm({
   types: ChannelTypeDescriptor[];
   disabled: boolean;
 }) {
-  const active = useInstanceStore((s) => s.active());
+  const { client, prefix } = useActiveClient();
   const qc = useQueryClient();
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
   const [type, setType] = useState<string>(types[0]?.type ?? "nostr");
   const [label, setLabel] = useState("");
   const [credential, setCredential] = useState("");
@@ -275,7 +271,7 @@ function AddChannelForm({
       setLabel("");
       setCredential("");
       setError(null);
-      qc.invalidateQueries({ queryKey: ["channels", client?.baseUrl, agentId] });
+      qc.invalidateQueries({ queryKey: [prefix, "channels", agentId] });
     },
     onError: (err) => {
       if (err instanceof ApiError) {

@@ -1,8 +1,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { useInstanceStore } from "@/lib/store/instances";
-import { createClient } from "@/lib/api/client";
+import { useState } from "react";
+import { useActiveClient } from "@/lib/store/use-active-client";
 import { Badge, Button, Input } from "@/components/ui";
 import { formatRelativeTime } from "@/lib/utils";
 import type { Comment, Issue, IssueStatus } from "@/lib/api/types";
@@ -17,17 +16,16 @@ const STATUSES: IssueStatus[] = [
 ];
 
 export function IssueDetail({ issueId }: { issueId: string }) {
-  const active = useInstanceStore((s) => s.active());
+  const { client, prefix } = useActiveClient();
   const qc = useQueryClient();
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
 
   const issue = useQuery<Issue | null>({
-    queryKey: ["issue", client?.baseUrl ?? "none", issueId] as const,
+    queryKey: [prefix, "issue", issueId] as const,
     queryFn: async () => (client ? client.get<Issue>(`/api/issues/${issueId}`) : null),
     enabled: !!client,
   });
   const comments = useQuery<Comment[]>({
-    queryKey: ["comments", client?.baseUrl ?? "none", issueId] as const,
+    queryKey: [prefix, "comments", issueId] as const,
     queryFn: async () =>
       client ? client.get<Comment[]>(`/api/issues/${issueId}/comments`) : [],
     enabled: !!client,
@@ -39,8 +37,8 @@ export function IssueDetail({ issueId }: { issueId: string }) {
       return client.patch<Issue>(`/api/issues/${issueId}`, body);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["issue", client?.baseUrl, issueId] });
-      qc.invalidateQueries({ queryKey: ["inbox", client?.baseUrl] });
+      qc.invalidateQueries({ queryKey: [prefix, "issue", issueId] });
+      qc.invalidateQueries({ queryKey: [prefix, "inbox"] });
     },
   });
   const postComment = useMutation({
@@ -48,7 +46,7 @@ export function IssueDetail({ issueId }: { issueId: string }) {
       if (!client) throw new Error("No active instance");
       return client.post<Comment>(`/api/issues/${issueId}/comments`, body);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", client?.baseUrl, issueId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [prefix, "comments", issueId] }),
   });
 
   const [newComment, setNewComment] = useState("");

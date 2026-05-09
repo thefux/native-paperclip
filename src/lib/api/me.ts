@@ -3,6 +3,8 @@ import { ApiClient, ApiError } from "@/lib/api/client";
 export interface ResolvedIdentity {
   id?: string;
   companyId: string;
+  /** Company display name when `/api/me` returns one. Manual-cid path leaves this undefined. */
+  companyName?: string;
   role?: string;
   displayName?: string;
   source: "api/me" | "agents/me" | "manual-cid";
@@ -50,9 +52,14 @@ export async function resolveIdentity(
     const actor = me.actor;
     const companyId = actor.companyId ?? me.company?.id ?? me.companies?.[0]?.id;
     if (companyId) {
+      const companyName =
+        me.company?.id === companyId
+          ? me.company?.name
+          : me.companies?.find((c) => c.id === companyId)?.name;
       return {
         id: actor.agentId ?? actor.userId ?? me.agent?.id ?? undefined,
         companyId,
+        companyName: companyName ?? undefined,
         role: me.agent?.role ?? actor.type,
         displayName: me.agent?.name ?? actor.userName ?? me.company?.name ?? undefined,
         source: "api/me",
@@ -71,9 +78,11 @@ export async function resolveIdentity(
   // 2. Legacy agent-JWT path.
   try {
     const me = await client.get<AgentsMeResponse>("/api/agents/me");
+    const companyName = await fetchCompanyName(client, me.companyId);
     return {
       id: me.id,
       companyId: me.companyId,
+      companyName,
       role: me.role,
       displayName: me.name,
       source: "agents/me",
@@ -101,8 +110,26 @@ export async function resolveIdentity(
   // Final probe — list company agents. 200 means the cid is valid for this
   // pck_ token and the company exists.
   await client.get<unknown[]>(`/api/companies/${encodeURIComponent(manualCompanyId)}/agents`);
+  const companyName = await fetchCompanyName(client, manualCompanyId);
   return {
     companyId: manualCompanyId,
+    companyName,
     source: "manual-cid",
   };
+}
+
+async function fetchCompanyName(
+  client: ApiClient,
+  companyId: string,
+): Promise<string | undefined> {
+  try {
+    const company = await client.get<{ id: string; name?: string }>(
+      `/api/companies/${encodeURIComponent(companyId)}`,
+    );
+    return company?.name ?? undefined;
+  } catch {
+    // Older instances may not expose the read-by-id route, or the pck_ key may
+    // lack the necessary scope. Either way the name is cosmetic — fall through.
+    return undefined;
+  }
 }

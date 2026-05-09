@@ -1,20 +1,18 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { useInstanceStore } from "@/lib/store/instances";
-import { createClient, type ApiClient } from "@/lib/api/client";
+import { useActiveClient } from "@/lib/store/use-active-client";
+import { type ApiClient } from "@/lib/api/client";
 import { Badge, Button } from "@/components/ui";
 import { formatRelativeTime } from "@/lib/utils";
 import type { Routine } from "@/lib/api/types";
 
 export function RoutinesView() {
-  const active = useInstanceStore((s) => s.active());
+  const { instance, client, prefix } = useActiveClient();
   const qc = useQueryClient();
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
-  const companyId = active?.defaultCompanyId ?? active?.identity?.companyId;
+  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId;
 
   const routines = useQuery<Routine[]>({
-    queryKey: ["routines", client?.baseUrl ?? "none", companyId ?? "none"] as const,
+    queryKey: [prefix, "routines", companyId ?? "none"] as const,
     queryFn: async () => {
       if (!client || !companyId) return [];
       return client.get<Routine[]>(`/api/companies/${companyId}/routines`);
@@ -36,7 +34,7 @@ export function RoutinesView() {
           <li className="p-3 text-sm text-muted">No routines.</li>
         )}
         {routines.data?.map((r) => (
-          <RoutineRow key={r.id} routine={r} client={client} qc={qc} />
+          <RoutineRow key={r.id} routine={r} client={client} qc={qc} prefix={prefix} />
         ))}
       </ul>
     </div>
@@ -47,14 +45,16 @@ function RoutineRow({
   routine,
   client,
   qc,
+  prefix,
 }: {
   routine: Routine;
   client: ApiClient;
   qc: QueryClient;
+  prefix: string;
 }) {
   const trigger = useMutation({
     mutationFn: () => client.post<{ runId: string }>(`/api/routines/${routine.id}/runs`, {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["routines", client.baseUrl] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [prefix, "routines"] }),
   });
 
   return (

@@ -1,19 +1,16 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { useInstanceStore } from "@/lib/store/instances";
-import { createClient } from "@/lib/api/client";
+import { useActiveClient } from "@/lib/store/use-active-client";
 import { Badge } from "@/components/ui";
 import { formatRelativeTime } from "@/lib/utils";
 import type { Approval } from "@/lib/api/types";
 
 export function ApprovalsView() {
-  const active = useInstanceStore((s) => s.active());
-  const client = useMemo(() => (active ? createClient(active) : null), [active]);
-  const companyId = active?.defaultCompanyId ?? active?.identity?.companyId;
+  const { instance, client, prefix } = useActiveClient();
+  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId;
 
   const approvals = useQuery<Approval[]>({
-    queryKey: ["approvals", client?.baseUrl ?? "none", companyId ?? "none"] as const,
+    queryKey: [prefix, "approvals", companyId ?? "none"] as const,
     queryFn: async () => {
       if (!client || !companyId) return [];
       return client.get<Approval[]>(`/api/companies/${companyId}/approvals`);
