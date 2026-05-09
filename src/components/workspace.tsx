@@ -14,6 +14,7 @@ import { LayersView } from "@/components/views/layers-view";
 import { DashboardView } from "@/components/views/dashboard-view";
 import { ProjectsView } from "@/components/views/projects-view";
 import { GoalsView } from "@/components/views/goals-view";
+import { AgentsView } from "@/components/views/agents-view";
 import { cn } from "@/lib/utils";
 import {
   Inbox,
@@ -25,6 +26,7 @@ import {
   ShieldCheck,
   Target,
   Briefcase,
+  Users,
 } from "lucide-react";
 
 type Tab =
@@ -32,6 +34,7 @@ type Tab =
   | "inbox"
   | "projects"
   | "goals"
+  | "agents"
   | "routines"
   | "approvals"
   | "channels"
@@ -82,6 +85,13 @@ export function Workspace() {
             icon={<Target size={14} />}
           >
             Goals
+          </TabButton>
+          <TabButton
+            active={tab === "agents"}
+            onClick={() => setTab("agents")}
+            icon={<Users size={14} />}
+          >
+            Agents
           </TabButton>
           <TabButton
             active={tab === "routines"}
@@ -153,6 +163,11 @@ export function Workspace() {
         {tab === "goals" && (
           <section className="flex-1 border-r border-border">
             <GoalsView onOpenIssue={openIssueAndFocusInbox} />
+          </section>
+        )}
+        {tab === "agents" && (
+          <section className="flex-1 border-r border-border">
+            <AgentsView />
           </section>
         )}
         {tab === "routines" && (

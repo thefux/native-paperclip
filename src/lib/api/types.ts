@@ -111,6 +111,55 @@ export interface AgentSummary {
   urlKey?: string;
 }
 
+export interface AgentDetail extends AgentSummary {
+  companyId?: string;
+  instructionsPath?: string | null;
+  chainOfCommand?: string[];
+  budgetUsedCents?: number;
+  budgetLimitCents?: number;
+  description?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  /** Skills attached to the agent. */
+  skills?: Array<{ id: string; name: string }>;
+}
+
+/** Run record. Server may emit either lower-level statuses (running/succeeded/failed) or domain ones. */
+export interface AgentRun {
+  id: string;
+  agentId: string;
+  status: string;
+  result?: string | null;
+  startedAt: string;
+  endedAt?: string | null;
+  triggerKind?: string;
+  triggerIssueId?: string | null;
+  triggerCommentId?: string | null;
+  budgetCentsSpent?: number;
+}
+
+/** Transcript entry — broadly compatible with both V1 control plane and V2 paperclip. */
+export interface RunTranscriptEntry {
+  id?: string;
+  type?: string;
+  role?: "system" | "user" | "assistant" | "tool" | string;
+  body?: string;
+  payload?: Record<string, unknown>;
+  createdAt?: string;
+  /** Anything else the server returned. */
+  [key: string]: unknown;
+}
+
+export interface AgentRunDetail extends AgentRun {
+  /** Some servers return transcript entries inline. */
+  transcript?: RunTranscriptEntry[];
+  /** Some servers expose a separate `messages` array. */
+  messages?: RunTranscriptEntry[];
+  /** Some servers stash the full log under `events`. */
+  events?: RunTranscriptEntry[];
+}
+
 export interface Comment {
   id: string;
   issueId: string;
