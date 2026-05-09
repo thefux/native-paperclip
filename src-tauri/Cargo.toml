@@ -1,6 +1,6 @@
 [package]
 name = "native-paperclip"
-version = "0.2.0"
+version = "0.3.0"
 description = "Tauri 2 + Next.js native app for connecting to and controlling multiple Paperclip instances."
 authors = ["thefux"]
 edition = "2021"

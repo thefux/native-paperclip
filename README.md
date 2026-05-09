@@ -11,21 +11,29 @@ versioned, and signed independently.
 
 ## Status
 
-Phase 1 scaffold + V2 (Phase 7) surfaces:
+`v0.3.0` — V2 Phase 8 (multi-company + web parity, [ROU-84](http://localhost:3000/thefux/paperclipV2/issues/ROU-84)):
 
 - [x] Workspace, build config, lint config
-- [x] Multi-instance picker (`{ baseUrl, apiKey }`) persisted via `tauri-plugin-store` (OS-encrypted file) with `localStorage` fallback for the web preview
-- [x] `pck_…` API-key onboarding (validated via `GET /api/agents/me`)
-- [x] Bearer-auth API client (`createClient(instance)`)
-- [x] Inbox / Issue detail / Routines / Approvals views
-- [x] Channels view — list + add (Nostr / Telegram), test, ad-hoc DM, graceful 501 banner while ROU-53 / ROU-54 ship
-- [x] Layers view — stack list, reorder, enable / disable, edit JSON config, audit-log viewer
-- [x] Issue mutations: status change, post comment
-- [x] Routine "Run now" action
-- [x] WebSocket subscriber against `/api/companies/:cid/events/ws`
-- [ ] Mobile builds (Android first, iOS pending signing)
-- [ ] Push notifications (server-side relay required)
-- [ ] CI workflow (Gitea Actions)
+- [x] Multi-company connections — `Instance` carries `companyName` / `role` / `displayName`, switcher renders distinct rows for two `pck_` tokens on the same `baseUrl`, "Add another company on `<host>`" footer pre-fills the onboarding URL, identity refresh on activation, query-key isolation (`[instance.id, …]`), `health: ok|degraded|unknown` flag with a yellow 401-driven re-auth banner.
+- [x] `pck_…` API-key onboarding (validated via `GET /api/me` with `agents/me` + manual-cid fallbacks).
+- [x] Bearer-auth API client with `put` + `onUnauthorized` callback.
+- [x] **Dashboard** — counts by status / priority, pending approvals, recent issues / agents / runs.
+- [x] **Inbox** — Mine vs All-in-company filter, single-status chips, project picker, search.
+- [x] **Issue detail** — read, status change, comment, **assignee re-pick**, **subtask create** (inherits parent workspace), **blockers picker**, **subtasks list**, **documents panel** (list / view / edit / new with `baseRevisionId`).
+- [x] **Search** — debounced 200ms global search across the active company.
+- [x] **Projects** — list / detail / create with project-filtered issue list.
+- [x] **Goals** — list / detail / create with goal-filtered issue list.
+- [x] **Agents** — list / detail (identity, recent runs, audit log), read-only run transcript modal, hire-request flow that submits a `request_board_approval`.
+- [x] **Approvals** — list / detail with linked issues and approve / reject / withdraw decision UI.
+- [x] **Routines** — list / detail / create / edit / delete / pause / resume / run-now / triggers card.
+- [x] **Audit + Skills** — combined tab with skills-registry search and per-api-key audit log.
+- [x] **Channels** — list + add (Nostr / Telegram), test, ad-hoc DM, graceful 501 banner while V2 phases ship.
+- [x] **Layers** — stack list, reorder, enable / disable, edit JSON config, audit-log viewer.
+- [x] WebSocket subscriber against `/api/companies/:cid/events/ws` with **OS-level notifications** for new comments on assigned issues, approvals needing attention, and routine failures.
+- [ ] Mobile builds (Android first, iOS pending signing).
+- [ ] Push notifications (server-side relay required).
+- [ ] CI workflow (Gitea Actions).
+- [ ] Tray icon + cross-app deep links (`paperclip://issue/<id>`) — needs `tauri-plugin-deep-link` + Rust rebuild.
 
 ## Architecture (one-liner per layer)
 
