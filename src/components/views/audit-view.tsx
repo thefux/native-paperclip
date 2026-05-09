@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Search } from "lucide-react";
 import { useActiveClient } from "@/lib/store/use-active-client";
 import { agentsApi } from "@/lib/api/agents";
-import { apiKeysApi, type CompanyApiKey } from "@/lib/api/api-keys";
+import { ApiKeyAuditPanel } from "@/components/api-key-audit-panel";
 import { Badge, Card } from "@/components/ui";
 import { formatRelativeTime, cn } from "@/lib/utils";
 import type { AgentSummary, AuditEntry } from "@/lib/api/types";
@@ -16,8 +16,9 @@ import type { AgentSummary, AuditEntry } from "@/lib/api/types";
  *    `/api/companies/:cid/agent-audit-log`, which doesn't exist on master
  *    `0391dd20`; if/when that aggregate route lands the panel can collapse the
  *    agent picker into "all agents."
- *  - Per-api-key audit-log (Phase 6) below: kept as-is from the previous
- *    SkillsView so we don't regress the existing pck_ inspection workflow.
+ *  - Per-api-key audit-log (Phase 6) below: imported from
+ *    `<ApiKeyAuditPanel>` so the same panel can render inside the Company
+ *    Settings → API Keys drilldown (Phase C1 / ROU-98) without duplication.
  *
  * The Skills registry browser stays in `<SkillsView>` (tab=skills); this file
  * exists so `tab=audit` no longer mounts a misleadingly-named component.
@@ -194,114 +195,6 @@ function AgentAuditLogPanel() {
               </li>
             );
           })}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-function ApiKeyAuditPanel() {
-  const { instance, client, prefix, companyId } = useActiveClient();
-  const [selectedKey, setSelectedKey] = useState<string>("");
-
-  const keys = useQuery<CompanyApiKey[]>({
-    queryKey: [prefix, "api-keys", companyId] as const,
-    queryFn: () =>
-      client && companyId
-        ? apiKeysApi.list(client, companyId)
-        : Promise.resolve([]),
-    enabled: !!client && !!companyId,
-    retry: false,
-  });
-
-  // Default-select the first key.
-  useEffect(() => {
-    if (!selectedKey && keys.data && keys.data.length > 0) {
-      setSelectedKey(keys.data[0].id);
-    }
-  }, [selectedKey, keys.data]);
-
-  const audit = useQuery<AuditEntry[]>({
-    queryKey: [prefix, "api-key-audit", companyId, selectedKey] as const,
-    queryFn: () =>
-      client && companyId && selectedKey
-        ? apiKeysApi.auditLog(client, companyId, selectedKey, { limit: 100 })
-        : Promise.resolve([]),
-    enabled: !!client && !!companyId && !!selectedKey,
-    retry: false,
-  });
-
-  if (!client) return null;
-  if (!companyId) return null;
-
-  return (
-    <Card className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-xs uppercase tracking-wide text-muted">
-          API key audit log
-        </span>
-        {keys.data && keys.data.length > 0 && (
-          <select
-            value={selectedKey}
-            onChange={(e) => setSelectedKey(e.target.value)}
-            aria-label="Filter by API key"
-            className="ml-auto rounded border border-border bg-bg px-2 py-1 text-sm"
-          >
-            {keys.data.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.label}
-                {k.tokenLastEight ? ` · …${k.tokenLastEight}` : ""}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      {keys.isError && (
-        <p className="text-xs text-yellow-300">
-          API keys unavailable: {(keys.error as Error).message}
-        </p>
-      )}
-
-      {keys.data?.length === 0 && (
-        <p className="text-sm text-muted">
-          No API keys on this company. Create one from the company settings page on
-          the server.
-        </p>
-      )}
-
-      {audit.isError && (
-        <p className="text-xs text-yellow-300">
-          Audit log unavailable: {(audit.error as Error).message}
-        </p>
-      )}
-
-      {audit.data?.length === 0 && selectedKey && (
-        <p className="text-sm text-muted">
-          No requests recorded for this key yet.
-        </p>
-      )}
-
-      {audit.data && audit.data.length > 0 && (
-        <ul className="max-h-96 space-y-1 overflow-y-auto">
-          {audit.data.map((entry) => (
-            <li
-              key={entry.id}
-              className="rounded border border-border bg-bg/50 p-2 text-xs"
-            >
-              <div className="mb-1 flex items-center gap-2 text-[11px] text-muted">
-                <span className="font-mono">{entry.kind}</span>
-                <span>·</span>
-                <span>{entry.direction}</span>
-                <span className="ml-auto">
-                  {formatRelativeTime(entry.createdAt)}
-                </span>
-              </div>
-              <pre className="whitespace-pre-wrap break-words font-mono text-[11px]">
-                {JSON.stringify(entry.redactedBody ?? entry.body, null, 2)}
-              </pre>
-            </li>
-          ))}
         </ul>
       )}
     </Card>

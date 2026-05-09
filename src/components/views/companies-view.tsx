@@ -1,24 +1,35 @@
-import { useState } from "react";
-import { Building2, Check, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Building2, Check, Plus, RefreshCw, Settings, Trash2 } from "lucide-react";
 import { useInstanceStore, type Instance, type InstanceCompany } from "@/lib/store/instances";
 import { useActiveClient } from "@/lib/store/use-active-client";
 import { resolveIdentity } from "@/lib/api/me";
 import { ApiError } from "@/lib/api/client";
 import { OnboardingScreen } from "@/components/onboarding-screen";
 import { Button, Card, Input, Badge } from "@/components/ui";
+import {
+  CompanySettingsView,
+  isValidSettingsSection,
+  type SettingsSection,
+} from "@/components/views/company-settings-view";
+import { useCompaniesSubroute } from "@/lib/use-companies-route";
 import { cn } from "@/lib/utils";
 
 /**
- * Companies management page (Phase B / [ROU-95](/ROU/issues/ROU-95)).
+ * Companies management page (Phase B / [ROU-95](/ROU/issues/ROU-95)) plus the
+ * Phase C1 Settings drilldown ([ROU-98](/ROU/issues/ROU-98)).
  *
  * Lists every company the active connection's API key can access and offers
- * actions to switch, leave, or add another. Two add paths:
+ * actions to switch, leave, add another, or open Settings. Two add paths:
  *  - "Add another pck_ key" — appends a sibling Instance bound to the same
  *    `baseUrl`. Works for any actor type.
  *  - "Create new company" — `POST /api/companies`. Only visible when the
  *    active key is a board user with instance-admin scope.
  *
- * Mobile (<lg): full-width single column. Desktop (≥lg): centered max-w-3xl.
+ * Routing: list state is implicit (`#companies`); selecting Settings on a row
+ * pushes `#companies/{cid}/settings/{section}` via `useCompaniesSubroute`.
+ *
+ * Mobile (<lg): full-width single column. Desktop (≥lg): centered max-w-3xl
+ * for the list; Settings expands to fill the pane.
  */
 export function CompaniesView() {
   const { instance, client, companyId } = useActiveClient();
@@ -30,23 +41,44 @@ export function CompaniesView() {
   const [addingPckKey, setAddingPckKey] = useState(false);
   const [creatingCompany, setCreatingCompany] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const subroute = useCompaniesSubroute();
 
-  if (!instance) {
-    return (
-      <div className="grid h-full place-items-center text-muted">
-        <p className="text-sm">Connect an instance to manage companies.</p>
-      </div>
-    );
-  }
-
-  const companies = instance.accessibleCompanies ?? [];
-  const isBoard = instance.actorType === "board";
-  const sameHostInstances = allInstances.filter(
-    (i) => i.id !== instance.id && safeHost(i.baseUrl) === safeHost(instance.baseUrl),
+  const companies = useMemo(
+    () => instance?.accessibleCompanies ?? [],
+    [instance],
   );
+  const isBoard = instance?.actorType === "board";
+  const sameHostInstances = instance
+    ? allInstances.filter(
+        (i) => i.id !== instance.id && safeHost(i.baseUrl) === safeHost(instance.baseUrl),
+      )
+    : [];
+
+  const settingsCompany = useMemo(() => {
+    const route = subroute.route;
+    if (route.kind !== "settings") return null;
+    return (
+      companies.find((c) => c.id === route.companyId) ?? {
+        id: route.companyId,
+        name: null,
+      }
+    );
+  }, [subroute.route, companies]);
+
+  // If the user navigates back to a company they no longer have access to
+  // (e.g. via stale deep-link), bounce them out of settings.
+  useEffect(() => {
+    const route = subroute.route;
+    if (route.kind !== "settings") return;
+    if (!instance) return;
+    const stillAccessible = companies.some((c) => c.id === route.companyId);
+    if (!stillAccessible && companies.length > 0) {
+      subroute.exitSettings();
+    }
+  }, [companies, instance, subroute]);
 
   const refreshIdentity = async () => {
-    if (!client) return;
+    if (!client || !instance) return;
     setRefreshing(true);
     try {
       const identity = await resolveIdentity(
@@ -61,6 +93,33 @@ export function CompaniesView() {
       setRefreshing(false);
     }
   };
+
+  if (!instance) {
+    return (
+      <div className="grid h-full place-items-center text-muted">
+        <p className="text-sm">Connect an instance to manage companies.</p>
+      </div>
+    );
+  }
+
+  if (subroute.route.kind === "settings" && settingsCompany) {
+    const section: SettingsSection | null = isValidSettingsSection(
+      subroute.route.section,
+    )
+      ? subroute.route.section
+      : null;
+    return (
+      <CompanySettingsView
+        company={settingsCompany as InstanceCompany}
+        section={section}
+        selectedKeyId={subroute.route.keyId}
+        onSectionChange={(s) => subroute.setSection(s)}
+        onOpenKey={(keyId) => subroute.enterKey(keyId)}
+        onCloseKey={() => subroute.exitKey()}
+        onBack={() => subroute.exitSettings()}
+      />
+    );
+  }
 
   return (
     <div className="flex h-full flex-col overflow-y-auto pl-safe pr-safe">
@@ -109,6 +168,7 @@ export function CompaniesView() {
                 company={c}
                 isActive={c.id === companyId}
                 onSelect={() => setActiveCompany(instance.id, c.id)}
+                onOpenSettings={() => subroute.enterSettings(c.id, "api-keys")}
               />
             ))}
           </ul>
@@ -175,40 +235,54 @@ function CompanyRow({
   company,
   isActive,
   onSelect,
+  onOpenSettings,
 }: {
   company: InstanceCompany;
   isActive: boolean;
   onSelect: () => void;
+  onOpenSettings: () => void;
 }) {
   return (
     <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        aria-pressed={isActive}
+      <div
         className={cn(
-          "flex w-full items-center justify-between gap-3 rounded-md border border-border bg-bg px-3 py-2 text-left",
-          "hover:bg-surface",
+          "flex items-center justify-between gap-2 rounded-md border border-border bg-bg",
           isActive && "border-accent/60 bg-accent/10",
         )}
       >
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium">{company.name ?? company.id}</div>
-          <div className="truncate text-[11px] text-muted">
-            {company.issuePrefix ? `${company.issuePrefix} · ` : ""}
-            <span className="font-mono">{company.id}</span>
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-pressed={isActive}
+          className="flex flex-1 items-center justify-between gap-3 rounded-l-md px-3 py-2 text-left hover:bg-surface"
+        >
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">{company.name ?? company.id}</div>
+            <div className="truncate text-[11px] text-muted">
+              {company.issuePrefix ? `${company.issuePrefix} · ` : ""}
+              <span className="font-mono">{company.id}</span>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          {isActive ? (
-            <span className="inline-flex items-center gap-1 text-accent">
-              <Check size={14} aria-hidden /> Active
-            </span>
-          ) : (
-            <span className="text-muted">Switch</span>
-          )}
-        </div>
-      </button>
+          <div className="flex items-center gap-2 text-xs">
+            {isActive ? (
+              <span className="inline-flex items-center gap-1 text-accent">
+                <Check size={14} aria-hidden /> Active
+              </span>
+            ) : (
+              <span className="text-muted">Switch</span>
+            )}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          aria-label={`Settings for ${company.name ?? company.id}`}
+          className="flex items-center gap-1 rounded-r-md px-3 py-2 text-xs text-muted hover:bg-surface hover:text-fg"
+        >
+          <Settings size={14} aria-hidden />
+          <span className="hidden sm:inline">Settings</span>
+        </button>
+      </div>
     </li>
   );
 }
