@@ -1,6 +1,6 @@
 {
   "name": "native-paperclip",
-  "version": "0.3.0",
+  "version": "0.4.0-rc.1",
   "private": true,
   "type": "module",
   "description": "Tauri 2 + Next.js native app for connecting to and controlling multiple Paperclip instances from desktop and mobile.",
