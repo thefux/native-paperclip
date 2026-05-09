@@ -109,15 +109,36 @@ export interface AgentSummary {
   role?: string;
   title?: string | null;
   urlKey?: string;
+  /**
+   * Server-emitted runtime status. Observed values: `running`, `idle`, `error`.
+   * The native filter chip set ({@link AgentStatusFilter}) maps these to
+   * Active/Paused/Error buckets. Older agents may omit it — treat absent as
+   * "active" / "idle".
+   */
+  status?: string;
+  icon?: string | null;
+  /** Cents spent this billing month. */
+  spentMonthlyCents?: number;
+  /** Cents allowed per billing month (0 / null = uncapped). */
+  budgetMonthlyCents?: number;
+  /** Set when the agent has been paused (manually or by budget). */
+  pausedAt?: string | null;
+  pauseReason?: string | null;
+  reportsTo?: string | null;
+  adapterType?: string | null;
+  lastHeartbeatAt?: string | null;
 }
 
 export interface AgentDetail extends AgentSummary {
   companyId?: string;
   instructionsPath?: string | null;
   chainOfCommand?: string[];
+  /** @deprecated Use {@link spentMonthlyCents}. Kept for older API responses. */
   budgetUsedCents?: number;
+  /** @deprecated Use {@link budgetMonthlyCents}. */
   budgetLimitCents?: number;
   description?: string;
+  capabilities?: string;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -125,38 +146,70 @@ export interface AgentDetail extends AgentSummary {
   skills?: Array<{ id: string; name: string }>;
 }
 
-/** Run record. Server may emit either lower-level statuses (running/succeeded/failed) or domain ones. */
+/**
+ * Heartbeat run record returned by `/api/companies/:cid/heartbeat-runs`. Server
+ * status values are `queued | running | succeeded | failed | cancelled`. We
+ * keep the field permissive because older paperclip v1 deployments may emit
+ * domain statuses (`done`, `errored`, …); the transcript view normalises them.
+ */
 export interface AgentRun {
   id: string;
+  companyId?: string;
   agentId: string;
   status: string;
-  result?: string | null;
-  startedAt: string;
-  endedAt?: string | null;
-  triggerKind?: string;
-  triggerIssueId?: string | null;
-  triggerCommentId?: string | null;
-  budgetCentsSpent?: number;
+  startedAt: string | null;
+  finishedAt?: string | null;
+  invocationSource?: string | null;
+  triggerDetail?: string | null;
+  wakeupRequestId?: string | null;
+  exitCode?: number | null;
+  signal?: string | null;
+  error?: string | null;
+  errorCode?: string | null;
+  /** Server stuffs the adapter's terminal payload here when the run finishes. */
+  resultJson?: {
+    result?: string;
+    summary?: string;
+    subtype?: string;
+    is_error?: boolean;
+    total_cost_usd?: number;
+    duration_ms?: number;
+    [key: string]: unknown;
+  } | null;
+  usageJson?: Record<string, unknown> | null;
+  contextSnapshot?: Record<string, unknown> | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-/** Transcript entry — broadly compatible with both V1 control plane and V2 paperclip. */
+/**
+ * Transcript-equivalent entry. The heartbeat events feed
+ * (`/api/heartbeat-runs/:id/events`) emits this shape; the older v1 transcript
+ * routes used `role` / `body`. We accept either via the optional fields.
+ */
 export interface RunTranscriptEntry {
-  id?: string;
+  id?: string | number;
+  /** Heartbeat event type, e.g. `lifecycle`, `adapter.invoke`, `adapter.message`. */
+  eventType?: string;
   type?: string;
   role?: "system" | "user" | "assistant" | "tool" | string;
+  /** Heartbeat events: `stdout` / `stderr` / `system`. */
+  stream?: string;
+  level?: string;
+  message?: string;
   body?: string;
-  payload?: Record<string, unknown>;
+  payload?: Record<string, unknown> | null;
   createdAt?: string;
   /** Anything else the server returned. */
   [key: string]: unknown;
 }
 
 export interface AgentRunDetail extends AgentRun {
-  /** Some servers return transcript entries inline. */
+  /** v1 transcript array (rare). */
   transcript?: RunTranscriptEntry[];
-  /** Some servers expose a separate `messages` array. */
+  /** v1 messages array (rare). */
   messages?: RunTranscriptEntry[];
-  /** Some servers stash the full log under `events`. */
+  /** Heartbeat-events feed, the canonical "transcript" on v2. */
   events?: RunTranscriptEntry[];
 }
 

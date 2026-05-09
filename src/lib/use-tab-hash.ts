@@ -54,6 +54,10 @@ export function useTabHash(defaultTab: Tab): [Tab, (tab: Tab) => void] {
 function readTabFromHash(): Tab | null {
   const raw = window.location.hash.replace(/^#/, "").trim();
   if (!raw) return null;
-  const first = raw.split("/")[0];
+  // Strip a `?query` portion (Phase D1 list filters live there) before reading
+  // the tab segment. Path-style sub-routes (`#agents/{id}`) keep working as
+  // before since we still take the first slash-separated piece.
+  const pathPart = raw.split("?", 1)[0];
+  const first = pathPart.split("/")[0];
   return VALID_TAB_IDS.has(first as Tab) ? (first as Tab) : null;
 }

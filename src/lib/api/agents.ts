@@ -8,6 +8,7 @@ import type {
   Goal,
   Label,
   Project,
+  RunTranscriptEntry,
 } from "@/lib/api/types";
 
 export const agentsApi = {
@@ -17,18 +18,30 @@ export const agentsApi = {
   get: async (client: ApiClient, agentId: string): Promise<AgentDetail> =>
     client.get<AgentDetail>(`/api/agents/${encodeURIComponent(agentId)}`),
 
+  /**
+   * List recent heartbeat runs for an agent, scoped to its company. The server
+   * route is `GET /api/companies/:cid/heartbeat-runs?agentId=:id` (`heartbeat`
+   * is the only run kind today). We require companyId so we don't have to
+   * round-trip `/api/agents/:id` to discover it on every call.
+   */
   runs: async (
     client: ApiClient,
+    companyId: string,
     agentId: string,
     opts: { limit?: number } = {},
   ): Promise<AgentRun[]> => {
-    const qs = opts.limit ? `?limit=${opts.limit}` : "";
-    const data = await client.get<AgentRun[] | { runs?: AgentRun[] }>(
-      `/api/agents/${encodeURIComponent(agentId)}/runs${qs}`,
+    const qs = new URLSearchParams({ agentId });
+    if (opts.limit) qs.set("limit", String(opts.limit));
+    return client.get<AgentRun[]>(
+      `/api/companies/${encodeURIComponent(companyId)}/heartbeat-runs?${qs.toString()}`,
     );
-    return Array.isArray(data) ? data : (data.runs ?? []);
   },
 
+  /**
+   * Per-agent audit log (V2 paperclip — ROU-57). Route is
+   * `GET /api/agents/:id/audit-log?limit=N`. Falls back to graceful empty/error
+   * surfaces on V1 deployments where the route is unavailable.
+   */
   auditLog: async (
     client: ApiClient,
     agentId: string,
@@ -42,9 +55,27 @@ export const agentsApi = {
   },
 };
 
+/**
+ * Heartbeat-run detail + events feed. The server returns run records under
+ * `/api/heartbeat-runs/:runId`, and the transcript-equivalent feed lives at
+ * `/api/heartbeat-runs/:runId/events`. We pull both and stitch them into the
+ * `AgentRunDetail` the transcript view consumes.
+ */
 export const runsApi = {
-  get: async (client: ApiClient, runId: string): Promise<AgentRunDetail> =>
-    client.get<AgentRunDetail>(`/api/runs/${encodeURIComponent(runId)}`),
+  get: async (client: ApiClient, runId: string): Promise<AgentRunDetail> => {
+    const run = await client.get<AgentRunDetail>(
+      `/api/heartbeat-runs/${encodeURIComponent(runId)}`,
+    );
+    try {
+      const events = await client.get<RunTranscriptEntry[]>(
+        `/api/heartbeat-runs/${encodeURIComponent(runId)}/events?limit=500`,
+      );
+      return { ...run, events };
+    } catch {
+      // Events endpoint optional — surface the run record even if events 404.
+      return run;
+    }
+  },
 };
 
 export const projectsApi = {
