@@ -81,12 +81,115 @@ export interface IssueDocumentSummary {
   updatedAt?: string;
 }
 
+export type ProjectStatus =
+  | "planned"
+  | "in_progress"
+  | "paused"
+  | "completed"
+  | "archived"
+  | string;
+
+/** Workspace nested inside a project payload (matches the wire shape from `GET /api/projects/:id`). */
+export interface ProjectWorkspace {
+  id: string;
+  companyId?: string;
+  projectId?: string;
+  name: string;
+  /** "git_repo" | "cwd" | other server-managed source kinds. */
+  sourceType?: string;
+  cwd?: string | null;
+  repoUrl?: string | null;
+  repoRef?: string | null;
+  defaultRef?: string | null;
+  visibility?: string | null;
+  setupCommand?: string | null;
+  cleanupCommand?: string | null;
+  isPrimary?: boolean;
+  remoteProvider?: string | null;
+  remoteWorkspaceRef?: string | null;
+  metadata?: Record<string, unknown> | null;
+  runtimeConfig?: Record<string, unknown> | null;
+  runtimeServices?: unknown[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Project summary as returned by `GET /api/companies/:cid/projects` and
+ * `GET /api/projects/:id`. The wire shape is wider than this but Phase E1
+ * only consumes the fields below.
+ */
 export interface Project {
   id: string;
+  companyId?: string;
   name: string;
-  description?: string;
-  status?: string;
+  description?: string | null;
+  status?: ProjectStatus;
   urlKey?: string;
+  goalId?: string | null;
+  goalIds?: string[];
+  goals?: Array<{ id: string; title: string }>;
+  leadAgentId?: string | null;
+  targetDate?: string | null;
+  color?: string | null;
+  archivedAt?: string | null;
+  pauseReason?: string | null;
+  pausedAt?: string | null;
+  /**
+   * Server-side parsed `ProjectExecutionWorkspacePolicy` object, opaque to
+   * native-paperclip until Phase E2 surfaces a concrete editor for it.
+   */
+  executionWorkspacePolicy?: Record<string, unknown> | null;
+  createdAt?: string;
+  updatedAt?: string;
+  codebase?: {
+    workspaceId?: string | null;
+    repoUrl?: string | null;
+    repoRef?: string | null;
+    defaultRef?: string | null;
+    repoName?: string | null;
+    localFolder?: string | null;
+    managedFolder?: string | null;
+    effectiveLocalFolder?: string | null;
+    origin?: string | null;
+  } | null;
+  workspaces?: ProjectWorkspace[];
+  primaryWorkspace?: ProjectWorkspace | null;
+  /** Free-text billing code (the web shows it on the Configuration tab). */
+  billingCode?: string | null;
+}
+
+/** Subset of `BudgetPolicySummary` we render on the Project Budget tab. */
+export interface BudgetPolicySummary {
+  policyId: string;
+  companyId: string;
+  scopeType: "company" | "agent" | "project" | string;
+  scopeId: string;
+  scopeName?: string;
+  metric: string;
+  windowKind: string;
+  amount: number;
+  observedAmount: number;
+  remainingAmount: number;
+  utilizationPercent: number;
+  warnPercent?: number;
+  hardStopEnabled?: boolean;
+  notifyEnabled?: boolean;
+  isActive?: boolean;
+  status: "ok" | "warning" | "hard_stop" | string;
+  paused?: boolean;
+  pauseReason?: string | null;
+  windowStart?: string;
+  windowEnd?: string;
+}
+
+export interface BudgetOverview {
+  companyId: string;
+  policies: BudgetPolicySummary[];
+  activeIncidents?: unknown[];
+  pausedAgentCount?: number;
+  pausedProjectCount?: number;
+  pendingApprovalCount?: number;
 }
 
 export interface Goal {

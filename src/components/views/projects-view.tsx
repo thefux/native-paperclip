@@ -1,26 +1,46 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useActiveClient } from "@/lib/store/use-active-client";
 import { projectsApi } from "@/lib/api/agents";
-import { issuesApi } from "@/lib/api/issues";
 import { Badge, Button, Card, Input } from "@/components/ui";
+import { isMobileShell, useBreakpoint } from "@/lib/use-breakpoint";
 import { cn, formatRelativeTime } from "@/lib/utils";
-import type { InboxIssue, IssueStatus, Project } from "@/lib/api/types";
+import { useProjectsSubroute } from "@/lib/use-projects-route";
+import {
+  ProjectDetailView,
+  isValidProjectDetailSub,
+  type ProjectDetailSub,
+} from "@/components/views/project-detail-view";
+import type { Project } from "@/lib/api/types";
 
-const STATUS_TONE: Record<IssueStatus, "neutral" | "info" | "warn" | "danger" | "success"> = {
-  backlog: "neutral",
-  todo: "neutral",
+const DEFAULT_SUB: ProjectDetailSub = "overview";
+
+const STATUS_TONE: Record<string, "neutral" | "info" | "warn" | "danger" | "success"> = {
+  planned: "neutral",
   in_progress: "info",
-  in_review: "warn",
-  blocked: "danger",
-  done: "success",
-  cancelled: "neutral",
+  paused: "warn",
+  completed: "success",
+  archived: "neutral",
 };
 
+/**
+ * Projects tab (Phase E1 / [ROU-102](/ROU/issues/ROU-102)).
+ *
+ * Renders the project list as the root view; tapping a row pushes
+ * `#projects/{projectId}/{sub}` via `useProjectsSubroute`. The detail page
+ * itself owns the five sub-tabs and the back gesture.
+ *
+ * Mobile (sm + md): single-pane stack. Detail replaces the list.
+ * Desktop (lg+): two-pane — left list rail (max-w-3xl content) + right detail
+ * pane. The left rail stays visible during detail navigation so users can
+ * jump between projects without popping back.
+ */
 export function ProjectsView({ onOpenIssue }: { onOpenIssue: (id: string) => void }) {
-  const { instance, client, prefix, companyId } = useActiveClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { client, prefix, companyId } = useActiveClient();
+  const subroute = useProjectsSubroute();
+  const bp = useBreakpoint();
+  const isMobile = isMobileShell(bp);
   const [showCreate, setShowCreate] = useState(false);
 
   const projects = useQuery<Project[]>({
@@ -32,56 +52,66 @@ export function ProjectsView({ onOpenIssue }: { onOpenIssue: (id: string) => voi
   });
 
   if (!client) return null;
-  if (!companyId) return <div className="p-3 text-sm text-muted">No company selected.</div>;
+  if (!companyId)
+    return <div className="p-3 text-sm text-muted">No company selected.</div>;
+
+  const route = subroute.route;
+  const detailProjectId = route.kind === "detail" ? route.projectId : null;
+  const rawSub = route.kind === "detail" ? route.sub : null;
+  const detailSub: ProjectDetailSub = isValidProjectDetailSub(rawSub)
+    ? rawSub
+    : DEFAULT_SUB;
+
+  const list = (
+    <ProjectsList
+      projects={projects.data ?? []}
+      isLoading={projects.isLoading}
+      isError={projects.isError}
+      error={projects.error as Error | null}
+      activeId={detailProjectId}
+      onSelect={(id) => subroute.enterDetail(id, DEFAULT_SUB)}
+      onNew={() => setShowCreate(true)}
+    />
+  );
+
+  if (isMobile) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden">
+        {detailProjectId ? (
+          <ProjectDetailView
+            projectId={detailProjectId}
+            sub={detailSub}
+            onSubChange={(s) => subroute.setSub(s)}
+            onBack={() => subroute.exitDetail()}
+            onOpenIssue={onOpenIssue}
+          />
+        ) : (
+          list
+        )}
+        {showCreate && !detailProjectId && (
+          <CreateProjectModal
+            companyId={companyId}
+            onClose={() => setShowCreate(false)}
+            onCreated={(id) => {
+              setShowCreate(false);
+              subroute.enterDetail(id, DEFAULT_SUB);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full">
-      <aside className="w-72 shrink-0 border-r border-border">
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <span className="text-xs uppercase tracking-wide text-muted">Projects</span>
-          <Button
-            variant="ghost"
-            className="ml-auto px-2 py-0.5 text-xs"
-            onClick={() => setShowCreate(true)}
-          >
-            <Plus size={12} className="mr-1" />
-            New
-          </Button>
-        </div>
-
-        <ul className="overflow-y-auto">
-          {projects.isLoading && <li className="p-3 text-sm text-muted">Loading…</li>}
-          {projects.isError && (
-            <li className="p-3 text-sm text-yellow-300">
-              Projects unavailable: {(projects.error as Error).message}
-            </li>
-          )}
-          {projects.data?.length === 0 && (
-            <li className="p-3 text-sm text-muted">No projects yet.</li>
-          )}
-          {projects.data?.map((p) => (
-            <li key={p.id}>
-              <button
-                onClick={() => setSelectedId(p.id)}
-                className={cn(
-                  "flex w-full flex-col items-start gap-0.5 border-b border-border/60 px-3 py-2 text-left hover:bg-surface",
-                  selectedId === p.id && "bg-surface",
-                )}
-              >
-                <span className="text-sm font-medium">{p.name}</span>
-                {p.status && (
-                  <span className="text-xs text-muted">{p.status}</span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </aside>
-
-      <section className="flex-1 overflow-y-auto">
-        {selectedId ? (
-          <ProjectDetail
-            project={projects.data?.find((p) => p.id === selectedId) ?? null}
+    <div className="flex h-full overflow-hidden">
+      <aside className="w-80 shrink-0 border-r border-border">{list}</aside>
+      <section className="min-w-0 flex-1">
+        {detailProjectId ? (
+          <ProjectDetailView
+            projectId={detailProjectId}
+            sub={detailSub}
+            onSubChange={(s) => subroute.setSub(s)}
+            onBack={() => subroute.exitDetail()}
             onOpenIssue={onOpenIssue}
           />
         ) : (
@@ -97,7 +127,7 @@ export function ProjectsView({ onOpenIssue }: { onOpenIssue: (id: string) => voi
           onClose={() => setShowCreate(false)}
           onCreated={(id) => {
             setShowCreate(false);
-            setSelectedId(id);
+            subroute.enterDetail(id, DEFAULT_SUB);
           }}
         />
       )}
@@ -105,69 +135,118 @@ export function ProjectsView({ onOpenIssue }: { onOpenIssue: (id: string) => voi
   );
 }
 
-function ProjectDetail({
-  project,
-  onOpenIssue,
+function ProjectsList({
+  projects,
+  isLoading,
+  isError,
+  error,
+  activeId,
+  onSelect,
+  onNew,
 }: {
-  project: Project | null;
-  onOpenIssue: (id: string) => void;
+  projects: Project[];
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  onNew: () => void;
 }) {
-  const { instance, client, prefix, companyId } = useActiveClient();
-
-  const issues = useQuery<InboxIssue[]>({
-    queryKey: [prefix, "project-issues", project?.id] as const,
-    queryFn: async () => {
-      if (!client || !companyId || !project) return [];
-      return issuesApi.list(client, companyId, {
-        projectId: project.id,
-        includeTerminal: true,
-        limit: 100,
-      });
-    },
-    enabled: !!client && !!companyId && !!project,
-  });
-
-  if (!project) return null;
-
   return (
-    <div className="space-y-4 p-4">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold">{project.name}</h2>
-        {project.description && (
-          <p className="text-sm text-muted">{project.description}</p>
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+        <span className="text-xs uppercase tracking-wide text-muted">Projects</span>
+        <Button
+          variant="ghost"
+          className="ml-auto px-2 py-0.5 text-xs"
+          onClick={onNew}
+        >
+          <Plus size={12} className="mr-1" />
+          New
+        </Button>
+      </div>
+      <ul className="flex-1 overflow-y-auto">
+        {isLoading && (
+          <>
+            <ListSkeleton />
+            <ListSkeleton />
+            <ListSkeleton />
+          </>
         )}
-        {project.status && <Badge tone="info">{project.status}</Badge>}
-      </header>
-
-      <section className="space-y-2">
-        <h3 className="text-xs uppercase tracking-wide text-muted">
-          Issues in this project ({issues.data?.length ?? 0})
-        </h3>
-        {issues.isLoading && <p className="text-sm text-muted">Loading…</p>}
-        {issues.data?.length === 0 && (
-          <Card>
-            <p className="text-sm text-muted">No issues attached to this project yet.</p>
-          </Card>
+        {isError && (
+          <li className="p-3 text-sm text-yellow-300">
+            Projects unavailable: {error?.message ?? "unknown error"}
+          </li>
         )}
-        <ul className="divide-y divide-border/40 rounded-md border border-border bg-surface text-sm">
-          {issues.data?.map((issue) => (
-            <li key={issue.id}>
-              <button
-                onClick={() => onOpenIssue(issue.id)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-border/30"
-              >
-                <span className="font-mono text-xs text-muted">{issue.identifier}</span>
-                <Badge tone={STATUS_TONE[issue.status]}>{issue.status}</Badge>
-                <span className="truncate">{issue.title}</span>
-                <span className="ml-auto text-xs text-muted">
-                  {formatRelativeTime(issue.updatedAt)}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+        {!isLoading && !isError && projects.length === 0 && (
+          <li className="p-4 text-center text-sm text-muted">
+            No projects yet. Create one to get started.
+          </li>
+        )}
+        {projects.map((p) => (
+          <li key={p.id}>
+            <ProjectRow
+              project={p}
+              active={p.id === activeId}
+              onSelect={() => onSelect(p.id)}
+            />
+          </li>
+        ))}
+      </ul>
     </div>
+  );
+}
+
+function ProjectRow({
+  project,
+  active,
+  onSelect,
+}: {
+  project: Project;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  const tone = project.status ? (STATUS_TONE[project.status] ?? "neutral") : "neutral";
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      className={cn(
+        "flex w-full items-start gap-2 border-b border-border/60 px-3 py-2 text-left hover:bg-surface",
+        active && "bg-surface",
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          {project.color && (
+            <span
+              aria-hidden
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: project.color }}
+            />
+          )}
+          <span className="truncate text-sm font-medium">{project.name}</span>
+        </div>
+        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted">
+          {project.status && <Badge tone={tone}>{project.status}</Badge>}
+          {project.archivedAt && <Badge tone="neutral">archived</Badge>}
+          {project.updatedAt && (
+            <span className="truncate">{formatRelativeTime(project.updatedAt)}</span>
+          )}
+        </div>
+      </div>
+      <ChevronRight size={14} className="mt-1 shrink-0 text-muted" aria-hidden />
+    </button>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <li className="border-b border-border/60 px-3 py-2.5">
+      <div className="h-3 w-3/4 animate-pulse rounded bg-border/40" />
+      <div className="mt-2 h-2.5 w-1/2 animate-pulse rounded bg-border/30" />
+    </li>
   );
 }
 
