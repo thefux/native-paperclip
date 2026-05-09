@@ -11,17 +11,31 @@ import { RoutinesView } from "@/components/views/routines-view";
 import { ApprovalsView } from "@/components/views/approvals-view";
 import { ChannelsView } from "@/components/views/channels-view";
 import { LayersView } from "@/components/views/layers-view";
+import { DashboardView } from "@/components/views/dashboard-view";
+import { ProjectsView } from "@/components/views/projects-view";
+import { GoalsView } from "@/components/views/goals-view";
 import { cn } from "@/lib/utils";
 import {
   Inbox,
+  LayoutDashboard,
   Layers as LayersIcon,
   ListChecks,
   MessageSquare,
   RefreshCw,
   ShieldCheck,
+  Target,
+  Briefcase,
 } from "lucide-react";
 
-type Tab = "inbox" | "routines" | "approvals" | "channels" | "layers";
+type Tab =
+  | "dashboard"
+  | "inbox"
+  | "projects"
+  | "goals"
+  | "routines"
+  | "approvals"
+  | "channels"
+  | "layers";
 
 export function Workspace() {
   const active = useInstanceStore((s) => s.active());
@@ -45,8 +59,29 @@ export function Workspace() {
       <header className="flex items-center gap-3 border-b border-border bg-surface px-4 py-2">
         <InstanceSwitcher />
         <nav className="flex items-center gap-1 text-sm">
+          <TabButton
+            active={tab === "dashboard"}
+            onClick={() => setTab("dashboard")}
+            icon={<LayoutDashboard size={14} />}
+          >
+            Dashboard
+          </TabButton>
           <TabButton active={tab === "inbox"} onClick={() => setTab("inbox")} icon={<Inbox size={14} />}>
             Inbox
+          </TabButton>
+          <TabButton
+            active={tab === "projects"}
+            onClick={() => setTab("projects")}
+            icon={<Briefcase size={14} />}
+          >
+            Projects
+          </TabButton>
+          <TabButton
+            active={tab === "goals"}
+            onClick={() => setTab("goals")}
+            icon={<Target size={14} />}
+          >
+            Goals
           </TabButton>
           <TabButton
             active={tab === "routines"}
@@ -89,6 +124,11 @@ export function Workspace() {
       <ConnectionHealthBanner />
 
       <main className="flex flex-1">
+        {tab === "dashboard" && (
+          <section className="flex-1 border-r border-border">
+            <DashboardView onOpenIssue={openIssueAndFocusInbox} />
+          </section>
+        )}
         {tab === "inbox" && (
           <>
             <section className="w-full max-w-md border-r border-border">
@@ -104,6 +144,16 @@ export function Workspace() {
               )}
             </section>
           </>
+        )}
+        {tab === "projects" && (
+          <section className="flex-1 border-r border-border">
+            <ProjectsView onOpenIssue={openIssueAndFocusInbox} />
+          </section>
+        )}
+        {tab === "goals" && (
+          <section className="flex-1 border-r border-border">
+            <GoalsView onOpenIssue={openIssueAndFocusInbox} />
+          </section>
         )}
         {tab === "routines" && (
           <section className="flex-1 border-r border-border">

@@ -13,6 +13,19 @@ export const projectsApi = {
         `/api/companies/${encodeURIComponent(companyId)}/projects`,
       )
       .then((d) => (Array.isArray(d) ? d : (d.projects ?? []))),
+
+  get: async (client: ApiClient, projectId: string): Promise<Project> =>
+    client.get<Project>(`/api/projects/${encodeURIComponent(projectId)}`),
+
+  create: async (
+    client: ApiClient,
+    companyId: string,
+    body: { name: string; description?: string },
+  ): Promise<Project> =>
+    client.post<Project>(
+      `/api/companies/${encodeURIComponent(companyId)}/projects`,
+      body,
+    ),
 };
 
 export const goalsApi = {
@@ -20,6 +33,16 @@ export const goalsApi = {
     client
       .get<Goal[] | { goals?: Goal[] }>(`/api/companies/${encodeURIComponent(companyId)}/goals`)
       .then((d) => (Array.isArray(d) ? d : (d.goals ?? []))),
+
+  get: async (client: ApiClient, goalId: string): Promise<Goal> =>
+    client.get<Goal>(`/api/goals/${encodeURIComponent(goalId)}`),
+
+  create: async (
+    client: ApiClient,
+    companyId: string,
+    body: { title: string; description?: string },
+  ): Promise<Goal> =>
+    client.post<Goal>(`/api/companies/${encodeURIComponent(companyId)}/goals`, body),
 };
 
 export const labelsApi = {

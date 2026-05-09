@@ -12,6 +12,7 @@ export interface IssueListFilters {
   assigneeAgentId?: string | null;
   assigneeUserId?: string | null;
   projectId?: string | null;
+  goalId?: string | null;
   labelId?: string | null;
   parentId?: string | null;
   /** When true, also include `done` and `cancelled`. Default off. */
@@ -95,6 +96,7 @@ function buildQuery(filters: IssueListFilters): string {
   if (filters.assigneeAgentId) params.set("assigneeAgentId", filters.assigneeAgentId);
   if (filters.assigneeUserId) params.set("assigneeUserId", filters.assigneeUserId);
   if (filters.projectId) params.set("projectId", filters.projectId);
+  if (filters.goalId) params.set("goalId", filters.goalId);
   if (filters.labelId) params.set("labelId", filters.labelId);
   if (filters.parentId) params.set("parentId", filters.parentId);
   if (filters.limit) params.set("limit", String(filters.limit));
