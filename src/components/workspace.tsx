@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useInstanceStore } from "@/lib/store/instances";
 import { useActiveIdentityRefresh } from "@/lib/store/identity-refresh";
 import { InstanceSwitcher } from "@/components/instance-switcher";
+import { SearchBar } from "@/components/search-bar";
 import { ConnectionHealthBanner } from "@/components/connection-health-banner";
 import { InboxView } from "@/components/views/inbox-view";
 import { IssueDetail } from "@/components/views/issue-detail";
@@ -27,6 +28,11 @@ export function Workspace() {
   const [tab, setTab] = useState<Tab>("inbox");
   const [openIssueId, setOpenIssueId] = useState<string | null>(null);
   useActiveIdentityRefresh();
+
+  function openIssueAndFocusInbox(issueId: string) {
+    setTab("inbox");
+    setOpenIssueId(issueId);
+  }
 
   if (!active) return null;
 
@@ -71,9 +77,12 @@ export function Workspace() {
             Layers
           </TabButton>
         </nav>
-        <div className="ml-auto flex items-center gap-2 text-xs text-muted">
-          <ListChecks size={14} />
-          <span>{headerLabel}</span>
+        <div className="ml-auto flex items-center gap-3">
+          <SearchBar onOpen={openIssueAndFocusInbox} />
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <ListChecks size={14} />
+            <span>{headerLabel}</span>
+          </div>
         </div>
       </header>
 
@@ -87,7 +96,7 @@ export function Workspace() {
             </section>
             <section className="flex-1">
               {openIssueId ? (
-                <IssueDetail issueId={openIssueId} />
+                <IssueDetail issueId={openIssueId} onOpen={setOpenIssueId} />
               ) : (
                 <div className="grid h-full place-items-center text-muted">
                   <p className="text-sm">Select an issue</p>

@@ -33,13 +33,82 @@ export interface InboxIssue {
   parentId?: string | null;
   goalId?: string | null;
   projectId?: string | null;
+  labelIds?: string[];
+}
+
+export interface IssueLink {
+  id: string;
+  identifier: string;
+  title: string;
+  status: IssueStatus;
+  priority?: IssuePriority;
+  assigneeAgentId?: string | null;
 }
 
 export interface Issue extends InboxIssue {
   description?: string;
-  blockedBy?: { id: string; identifier: string; title: string; status: IssueStatus }[];
-  blocks?: { id: string; identifier: string; title: string; status: IssueStatus }[];
+  /** Issues blocking this one. Server returns full link records. */
+  blockedBy?: IssueLink[];
+  /** Issues this one blocks. */
+  blocks?: IssueLink[];
+  /** Direct children (subtasks). */
+  children?: IssueLink[];
   createdAt: string;
+  billingCode?: string | null;
+}
+
+/** Issue document — `key` is unique within an issue (e.g. `plan`, `api-keys`). */
+export interface IssueDocument {
+  id: string;
+  issueId: string;
+  key: string;
+  title?: string;
+  format: "markdown" | "json" | "text" | string;
+  body: string;
+  latestRevisionId: string;
+  latestRevisionNumber?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueDocumentSummary {
+  id: string;
+  issueId?: string;
+  key: string;
+  title?: string;
+  latestRevisionId: string;
+  latestRevisionNumber?: number;
+  updatedAt?: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  status?: string;
+  urlKey?: string;
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+}
+
+export interface Label {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+/** Compact agent record returned by /api/companies/:cid/agents and used by pickers. */
+export interface AgentSummary {
+  id: string;
+  name: string;
+  role?: string;
+  title?: string | null;
+  urlKey?: string;
 }
 
 export interface Comment {
