@@ -1,7 +1,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { ChevronLeft, Plus } from "lucide-react";
 import { useActiveClient } from "@/lib/store/use-active-client";
 import { agentsApi } from "@/lib/api/agents";
 import { issuesApi } from "@/lib/api/issues";
@@ -23,10 +23,13 @@ const STATUSES: IssueStatus[] = [
 export function IssueDetail({
   issueId,
   onOpen,
+  onBack,
 }: {
   issueId: string;
   /** Open another issue (for blocker / child / search-result navigation). Optional. */
   onOpen?: (id: string) => void;
+  /** Mobile drilldown: render a back button that pops the detail and returns to the list. */
+  onBack?: () => void;
 }) {
   const { instance, client, prefix } = useActiveClient();
   const qc = useQueryClient();
@@ -85,6 +88,16 @@ export function IssueDetail({
     <div className="flex h-full flex-col">
       <header className="space-y-2 border-b border-border px-4 py-3">
         <div className="flex flex-wrap items-center gap-2 text-xs">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to inbox"
+              className="-ml-1 rounded p-1 text-muted hover:bg-surface hover:text-fg"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
           <span className="font-mono text-muted">{i.identifier}</span>
           <Badge tone="info">{i.status}</Badge>
           <Badge tone="warn">{i.priority}</Badge>

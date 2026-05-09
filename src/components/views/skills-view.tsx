@@ -3,24 +3,20 @@ import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { useActiveClient } from "@/lib/store/use-active-client";
 import { skillsApi, type SkillDescriptor } from "@/lib/api/skills";
-import { apiKeysApi, type CompanyApiKey } from "@/lib/api/api-keys";
 import { Badge, Card } from "@/components/ui";
-import type { AuditEntry } from "@/lib/api/types";
-import { formatRelativeTime } from "@/lib/utils";
 
 /**
- * Combined "Audit + Skills" tab — two stacked panes:
- *  - Skills registry browser (Phase 5, /api/skills/registry/search). Shows
- *    a phase-stub banner when the route is not deployed yet.
- *  - Per-api-key audit log (Phase 6, /api/companies/:cid/api-keys/:id/audit-log).
- *    The pck_ token in use is auto-selected from the keys list when its
- *    tokenLastEight matches; otherwise the user picks any key to inspect.
+ * Skills tab — registry browser only. Phase 5 (`/api/skills/registry/search`)
+ * shows a phase-stub banner when the route is not yet deployed on this
+ * instance.
+ *
+ * The api-key audit panel that previously shared this file moved to
+ * `<AuditView>` (tab=audit) so each tab has a single responsibility.
  */
 export function SkillsView() {
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
       <SkillsRegistryPanel />
-      <ApiKeyAuditPanel />
     </div>
   );
 }
@@ -55,6 +51,7 @@ function SkillsRegistryPanel() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search skills…"
+            aria-label="Search skills registry"
             className="w-48 bg-transparent placeholder:text-muted focus:outline-none"
           />
         </div>
@@ -104,115 +101,6 @@ function SkillsRegistryPanel() {
           </li>
         ))}
       </ul>
-    </Card>
-  );
-}
-
-function ApiKeyAuditPanel() {
-  const { instance, client, prefix } = useActiveClient();
-  const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
-  const [selectedKey, setSelectedKey] = useState<string>("");
-
-  const keys = useQuery<CompanyApiKey[]>({
-    queryKey: [prefix, "api-keys", companyId] as const,
-    queryFn: () =>
-      client && companyId
-        ? apiKeysApi.list(client, companyId)
-        : Promise.resolve([]),
-    enabled: !!client && !!companyId,
-    retry: false,
-  });
-
-  // Default-select the first key.
-  useEffect(() => {
-    if (!selectedKey && keys.data && keys.data.length > 0) {
-      setSelectedKey(keys.data[0].id);
-    }
-  }, [selectedKey, keys.data]);
-
-  const audit = useQuery<AuditEntry[]>({
-    queryKey: [prefix, "api-key-audit", companyId, selectedKey] as const,
-    queryFn: () =>
-      client && companyId && selectedKey
-        ? apiKeysApi.auditLog(client, companyId, selectedKey, { limit: 100 })
-        : Promise.resolve([]),
-    enabled: !!client && !!companyId && !!selectedKey,
-    retry: false,
-  });
-
-  if (!client) return null;
-  if (!companyId)
-    return null;
-
-  return (
-    <Card className="space-y-3">
-      <div className="flex items-center gap-2">
-        <span className="text-xs uppercase tracking-wide text-muted">
-          API key audit log
-        </span>
-        {keys.data && keys.data.length > 0 && (
-          <select
-            value={selectedKey}
-            onChange={(e) => setSelectedKey(e.target.value)}
-            className="ml-auto rounded border border-border bg-bg px-2 py-1 text-sm"
-          >
-            {keys.data.map((k) => (
-              <option key={k.id} value={k.id}>
-                {k.label}
-                {k.tokenLastEight ? ` · …${k.tokenLastEight}` : ""}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      {keys.isError && (
-        <p className="text-xs text-yellow-300">
-          API keys unavailable: {(keys.error as Error).message}
-        </p>
-      )}
-
-      {keys.data?.length === 0 && (
-        <p className="text-sm text-muted">
-          No API keys on this company. Create one from the company settings page on
-          the server.
-        </p>
-      )}
-
-      {audit.isError && (
-        <p className="text-xs text-yellow-300">
-          Audit log unavailable: {(audit.error as Error).message}
-        </p>
-      )}
-
-      {audit.data?.length === 0 && selectedKey && (
-        <p className="text-sm text-muted">
-          No requests recorded for this key yet.
-        </p>
-      )}
-
-      {audit.data && audit.data.length > 0 && (
-        <ul className="max-h-96 space-y-1 overflow-y-auto">
-          {audit.data.map((entry) => (
-            <li
-              key={entry.id}
-              className="rounded border border-border bg-bg/50 p-2 text-xs"
-            >
-              <div className="mb-1 flex items-center gap-2 text-[11px] text-muted">
-                <span className="font-mono">{entry.kind}</span>
-                <span>·</span>
-                <span>{entry.direction}</span>
-                <span className="ml-auto">
-                  {formatRelativeTime(entry.createdAt)}
-                </span>
-              </div>
-              <pre className="whitespace-pre-wrap break-words font-mono text-[11px]">
-                {JSON.stringify(entry.redactedBody ?? entry.body, null, 2)}
-              </pre>
-            </li>
-          ))}
-        </ul>
-      )}
     </Card>
   );
 }

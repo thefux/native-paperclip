@@ -1,5 +1,5 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Filter, Plus } from "lucide-react";
 import { useActiveClient } from "@/lib/store/use-active-client";
@@ -7,6 +7,7 @@ import { issuesApi } from "@/lib/api/issues";
 import { projectsApi } from "@/lib/api/agents";
 import { Badge, Button } from "@/components/ui";
 import { IssueCreateForm } from "@/components/issue-create-form";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { InboxIssue, IssuePriority, IssueStatus, Project } from "@/lib/api/types";
 
@@ -45,6 +46,7 @@ export function InboxView({
   openId: string | null;
 }) {
   const { instance, client, prefix } = useActiveClient();
+  const qc = useQueryClient();
   const companyId = instance?.defaultCompanyId ?? instance?.identity?.companyId ?? "";
   const myAgentId = instance?.identity?.id ?? "";
 
@@ -93,6 +95,14 @@ export function InboxView({
   const error = isFiltered ? filtered.error : inboxLite.error;
 
   const visibleStatusFilter = useMemo(() => statusFilter ?? [], [statusFilter]);
+
+  const refreshLists = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: [prefix, "inbox"] }),
+      qc.invalidateQueries({ queryKey: [prefix, "inbox-filtered"] }),
+      qc.invalidateQueries({ queryKey: [prefix, "projects", companyId] }),
+    ]);
+  };
 
   if (!client) return null;
 
@@ -156,38 +166,40 @@ export function InboxView({
         )}
       </div>
 
-      <ul className="flex-1 overflow-y-auto">
-        {isLoading && <li className="p-3 text-sm text-muted">Loading…</li>}
-        {error && (
-          <li className="p-3 text-sm text-red-400">{(error as Error).message}</li>
-        )}
-        {issues?.length === 0 && (
-          <li className="p-3 text-sm text-muted">
-            {isFiltered ? "No issues match these filters." : "Inbox is empty."}
-          </li>
-        )}
-        {issues?.map((issue) => (
-          <li key={issue.id}>
-            <button
-              onClick={() => onOpen(issue.id)}
-              className={cn(
-                "flex w-full flex-col items-start gap-1 border-b border-border/60 px-3 py-2 text-left hover:bg-surface",
-                openId === issue.id && "bg-surface",
-              )}
-            >
-              <div className="flex w-full items-center gap-2">
-                <span className="font-mono text-xs text-muted">{issue.identifier}</span>
-                <Badge tone={STATUS_TONE[issue.status]}>{issue.status}</Badge>
-                <Badge tone={PRIORITY_TONE[issue.priority]}>{issue.priority}</Badge>
-                <span className="ml-auto text-xs text-muted">
-                  {formatRelativeTime(issue.updatedAt)}
-                </span>
-              </div>
-              <span className="line-clamp-2 text-sm">{issue.title}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <PullToRefresh onRefresh={refreshLists} className="flex-1">
+        <ul>
+          {isLoading && <li className="p-3 text-sm text-muted">Loading…</li>}
+          {error && (
+            <li className="p-3 text-sm text-red-400">{(error as Error).message}</li>
+          )}
+          {issues?.length === 0 && (
+            <li className="p-3 text-sm text-muted">
+              {isFiltered ? "No issues match these filters." : "Inbox is empty."}
+            </li>
+          )}
+          {issues?.map((issue) => (
+            <li key={issue.id}>
+              <button
+                onClick={() => onOpen(issue.id)}
+                className={cn(
+                  "flex w-full flex-col items-start gap-1 border-b border-border/60 px-3 py-2 text-left hover:bg-surface",
+                  openId === issue.id && "bg-surface",
+                )}
+              >
+                <div className="flex w-full items-center gap-2">
+                  <span className="font-mono text-xs text-muted">{issue.identifier}</span>
+                  <Badge tone={STATUS_TONE[issue.status]}>{issue.status}</Badge>
+                  <Badge tone={PRIORITY_TONE[issue.priority]}>{issue.priority}</Badge>
+                  <span className="ml-auto text-xs text-muted">
+                    {formatRelativeTime(issue.updatedAt)}
+                  </span>
+                </div>
+                <span className="line-clamp-2 text-sm">{issue.title}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PullToRefresh>
 
       {showCreate && (
         <IssueCreateForm

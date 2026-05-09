@@ -9,6 +9,10 @@
   --muted: #8a8f99;
   --fg: #e8e9ec;
   --accent: #6e8efb;
+  --accent-strong: #8aa3ff;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --success: #34d399;
 }
 
 html,
@@ -16,4 +20,5 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
 }
